@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f6772e2a71424543a3363fc00621360, type: 3}
+  m_Name: WarChiefOrc
+  m_EditorClassIdentifier: 
+  EnemyName: Lord of Orcs
+  EnemyType: Orc
+  EnemyIcon: {fileID: 0}
+  baseHP: 400
+  baseArmor: 20
+  minAtk: 15
+  maxAtk: 30
+  minSpecialAtk: 30
+  maxSpecialAtk: 40
+  dodgeChance: 10
+  blockChance: 15
+  counterChance: 10
+  goldDropMin: 50
+  goldDropMax: 70
+  PotionDropChance: 50

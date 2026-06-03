@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: 7f6772e2a71424543a3363fc00621360, type: 3}
+  m_Name: MinionGoblin
+  m_EditorClassIdentifier: 
+  EnemyName: Lesser Goblin
+  EnemyType: Goblin
+  EnemyIcon: {fileID: 0}
+  baseHP: 80
+  baseArmor: 0
+  minAtk: 15
+  maxAtk: 25
+  minSpecialAtk: 0
+  maxSpecialAtk: 0
+  dodgeChance: 1
+  blockChance: 1
+  counterChance: 1
+  goldDropMin: 5
+  goldDropMax: 20
+  PotionDropChance: 50
