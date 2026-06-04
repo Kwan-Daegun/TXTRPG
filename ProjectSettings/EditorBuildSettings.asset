@@ -8,4 +8,20 @@ EditorBuildSettings:
   - enabled: 1
     path: Assets/Scenes/TitleScene.unity
     guid: 2cda990e2423bbf4892e6590ba056729
+  - enabled: 1
+    path: Assets/Scenes/LobbyScene.unity
+    guid: a22ba765897a7fa49b2522cd40326215
+  - enabled: 1
+    path: Assets/Scenes/CharSelectScene.unity
+    guid: d1d7759c4c1e65645b82ad9f2cd989ed
+  - enabled: 1
+    path: Assets/Scenes/DungeonScene.unity
+    guid: f50779f92886df84ea14e8b25925b7af
+  - enabled: 1
+    path: Assets/Scenes/GameOverScene.unity
+    guid: 5a3e43f3384fc8f45abc259b6ec5d317
+  - enabled: 1
+    path: Assets/Scenes/VictoryScene.unity
+    guid: 420293c85001e174893bb2ad7a3998a8
   m_configObjects: {}
+  m_UseUCBPForAssetBundles: 0

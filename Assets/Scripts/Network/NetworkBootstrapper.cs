@@ -52,6 +52,7 @@ public class NetworkBootstrapper : MonoBehaviour
     // callbacks for client connections and disconnections mostly for debug purposes
     private void OnEnable()
     {
+        if (NetworkManager.Singleton == null) return;
         NetworkManager.Singleton.OnClientConnectedCallback
             += OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback

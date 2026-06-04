@@ -26,7 +26,7 @@ public class CombatManager : MonoBehaviour
         Instance = this;
     }
 
-    
+
     public void StartCombat(List<EnemyClass> enemySOs)
     {
         enemies.Clear();
@@ -44,7 +44,7 @@ public class CombatManager : MonoBehaviour
     public EnemyRuntimeData CurrentEnemy =>
         currentEnemyIndex < enemies.Count ? enemies[currentEnemyIndex] : null;
 
-    
+
     public void PlayerAttack(PlayerRunTimeData attacker)
     {
         var enemy = CurrentEnemy;
@@ -52,7 +52,7 @@ public class CombatManager : MonoBehaviour
 
         // chech special atk(20% lang)
         bool isSpecial = attacker.IsSpecialAttack();
-        int rawDamage  = attacker.RollAttack();
+        int rawDamage = attacker.RollAttack();
         if (isSpecial) rawDamage *= 2;
 
         CombatResult result = new CombatResult
@@ -66,57 +66,57 @@ public class CombatManager : MonoBehaviour
             // special cannot be dodged/blocked/countered
             enemy.TakeDamage(rawDamage);
             result.eventType = CombatEventType.Special;
-            result.damage    = rawDamage;
-            result.message   = $"{attacker.playerName} unleashes a SPECIAL ATTACK on " +
+            result.damage = rawDamage;
+            result.message = $"{attacker.playerName} unleashes a SPECIAL ATTACK on " +
                                $"{enemy.enemyName} for {rawDamage} damage!";
         }
         else
         {
-            
+
             if (enemy.IsDodge())
             {
                 result.eventType = CombatEventType.Dodge;
-                result.damage    = 0;
-                result.message   = $"{enemy.enemyName} dodged {attacker.playerName}'s attack!";
+                result.damage = 0;
+                result.message = $"{enemy.enemyName} dodged {attacker.playerName}'s attack!";
             }
-            
+
             else if (enemy.IsBlock())
             {
                 int blocked = rawDamage / 2;
                 enemy.TakeDamage(blocked);
                 result.eventType = CombatEventType.Block;
-                result.damage    = blocked;
-                result.message   = $"{enemy.enemyName} blocked! Only {blocked} damage taken.";
+                result.damage = blocked;
+                result.message = $"{enemy.enemyName} blocked! Only {blocked} damage taken.";
             }
             else
             {
-                
+
                 if (enemy.currentArmor >= rawDamage)
                 {
                     enemy.TakeDamage(rawDamage);
                     result.eventType = CombatEventType.ArmorAbsorb;
-                    result.damage    = 0;
-                    result.message   = $"{enemy.enemyName}'s armor absorbed the attack!";
+                    result.damage = 0;
+                    result.message = $"{enemy.enemyName}'s armor absorbed the attack!";
                 }
                 else
                 {
                     enemy.TakeDamage(rawDamage);
                     result.eventType = CombatEventType.Hit;
-                    result.damage    = rawDamage;
-                    result.message   = $"{attacker.playerName} hits {enemy.enemyName} " +
+                    result.damage = rawDamage;
+                    result.message = $"{attacker.playerName} hits {enemy.enemyName} " +
                                       $"for {rawDamage} damage!";
 
-                    
+
                     if (enemy.IsCounter())
                     {
                         attacker.TakeDamage(rawDamage);
                         var counter = new CombatResult
                         {
-                            eventType    = CombatEventType.Counter,
+                            eventType = CombatEventType.Counter,
                             attackerName = enemy.enemyName,
                             defenderName = attacker.playerName,
-                            damage       = rawDamage,
-                            message      = $"{enemy.enemyName} COUNTERS for {rawDamage} damage!"
+                            damage = rawDamage,
+                            message = $"{enemy.enemyName} COUNTERS for {rawDamage} damage!"
                         };
                         LogResult(counter);
                     }
@@ -126,26 +126,26 @@ public class CombatManager : MonoBehaviour
 
         LogResult(result);
 
-        
+
         if (enemy.isDead)
         {
             LogResult(new CombatResult
             {
                 eventType = CombatEventType.EnemyDied,
-                message   = $"{enemy.enemyName} has been defeated!",
+                message = $"{enemy.enemyName} has been defeated!",
                 defenderName = enemy.enemyName
             });
             HandleEnemyDeath(enemy);
         }
 
-        
+
         if (!enemy.isDead)
             EnemyAttack(enemy);
 
         GameManager.Instance.CheckPartyStatus();
     }
 
-    
+
     private void EnemyAttack(EnemyRuntimeData enemy)
     {
         // enemy will oick a random living party member
@@ -155,8 +155,8 @@ public class CombatManager : MonoBehaviour
         var target = living[Random.Range(0, living.Count)];
 
         bool isSpecial = enemy.IsSpecial();
-        int rawDamage  = isSpecial ? enemy.RollSpecialAttack() : enemy.RollAttack();
-        if (isSpecial && enemy.template.minSpecialAtk == 0) 
+        int rawDamage = isSpecial ? enemy.RollSpecialAttack() : enemy.RollAttack();
+        if (isSpecial && enemy.template.minSpecialAtk == 0)
         {
             rawDamage = enemy.RollAttack() * 2;
         }
@@ -171,47 +171,47 @@ public class CombatManager : MonoBehaviour
         {
             target.TakeDamage(rawDamage);
             result.eventType = CombatEventType.Special;
-            result.damage    = rawDamage;
-            result.message   = $"{enemy.enemyName} uses SPECIAL ATTACK on " +
+            result.damage = rawDamage;
+            result.message = $"{enemy.enemyName} uses SPECIAL ATTACK on " +
                                $"{target.playerName} for {rawDamage} damage!";
         }
         else
         {
-            
+
             if (target.IsDodge())
             {
                 result.eventType = CombatEventType.Dodge;
-                result.damage    = 0;
-                result.message   = $"{target.playerName} dodged {enemy.enemyName}'s attack!";
+                result.damage = 0;
+                result.message = $"{target.playerName} dodged {enemy.enemyName}'s attack!";
             }
-            
+
             else if (target.IsBlock())
             {
                 int blocked = rawDamage / 2;
                 target.TakeDamage(blocked);
                 result.eventType = CombatEventType.Block;
-                result.damage    = blocked;
-                result.message   = $"{target.playerName} blocked! Only {blocked} damage taken.";
+                result.damage = blocked;
+                result.message = $"{target.playerName} blocked! Only {blocked} damage taken.";
             }
             else
             {
                 target.TakeDamage(rawDamage);
                 result.eventType = CombatEventType.Hit;
-                result.damage    = rawDamage;
-                result.message   = $"{enemy.enemyName} hits {target.playerName} " +
+                result.damage = rawDamage;
+                result.message = $"{enemy.enemyName} hits {target.playerName} " +
                                   $"for {rawDamage} damage!";
 
-                
+
                 if (target.IsCounter())
                 {
                     enemy.TakeDamage(rawDamage);
                     var counter = new CombatResult
                     {
-                        eventType    = CombatEventType.Counter,
+                        eventType = CombatEventType.Counter,
                         attackerName = target.playerName,
                         defenderName = enemy.enemyName,
-                        damage       = rawDamage,
-                        message      = $"{target.playerName} COUNTERS for {rawDamage} damage!"
+                        damage = rawDamage,
+                        message = $"{target.playerName} COUNTERS for {rawDamage} damage!"
                     };
                     LogResult(counter);
                 }
@@ -224,28 +224,35 @@ public class CombatManager : MonoBehaviour
         {
             LogResult(new CombatResult
             {
-                eventType    = CombatEventType.PlayerDied,
+                eventType = CombatEventType.PlayerDied,
                 defenderName = target.playerName,
-                message      = $"{target.playerName} has fallen!"
+                message = $"{target.playerName} has fallen!"
             });
         }
     }
 
-    
+
     private void HandleEnemyDeath(EnemyRuntimeData enemy)
     {
-        // Gold drop
-        int gold = Random.Range(enemy.template.goldDropMin, enemy.template.goldDropMax + 1);
+        int gold = Random.Range(
+            enemy.template.goldDropMin,
+            enemy.template.goldDropMax + 1);
         GameManager.Instance.AddGold(gold);
 
-        // Potion drop
         if (Random.Range(0, 100) < enemy.template.PotionDropChance)
             GameManager.Instance.AddPotion();
 
-        // asdvance to next stupid enemy
+        UIManager.Instance.RefreshHUD();
+
         currentEnemyIndex++;
         if (currentEnemyIndex >= enemies.Count)
+        {
             OnCombatEnd?.Invoke();
+            UIManager.Instance.HideCombatPanel();
+
+            // Notify RoomManager
+            RoomManager.Instance.OnCombatEnded();
+        }
     }
 
     // debug lang ini
@@ -253,10 +260,25 @@ public class CombatManager : MonoBehaviour
     {
         combatLog.Add(result);
         OnCombatEvent?.Invoke(result);
+        UIManager.Instance.LogCombat(result.message);
+        UIManager.Instance.RefreshCombatPanel();
     }
+
 
     public bool IsCombatOver()
     {
         return currentEnemyIndex >= enemies.Count;
+    }
+    public void PlayerAttackAll()
+    {
+        foreach (var member in GameManager.Instance.party)
+        {
+            if (!member.isDead && CurrentEnemy != null
+                && !CurrentEnemy.isDead)
+            {
+                PlayerAttack(member);
+            }
+        }
+        UIManager.Instance.RefreshHUD();
     }
 }

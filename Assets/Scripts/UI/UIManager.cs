@@ -2,7 +2,7 @@ using UnityEngine.UI;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
-
+using UnityEngine.SceneManagement;
 public class UIManager : MonoBehaviour
 {
     public static UIManager Instance { get; private set; }
@@ -70,24 +70,100 @@ public class UIManager : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
+    private void Start()
+    {
+        FindScreenReferences();
+    }
 
+    private void FindScreenReferences()
+    {
+        // Find screens by name at runtime
+        if (titleScreen == null)
+            titleScreen = GameObject.Find("TitlePanel");
+        if (lobbyScreen == null)
+            lobbyScreen = GameObject.Find("LobbyPanel");
+        if (charSelectScreen == null)
+            charSelectScreen = GameObject.Find("CharSelectPanel");
+        if (dungeonScreen == null)
+            dungeonScreen = GameObject.Find("MainPanel");
+        if (gameOverScreen == null)
+            gameOverScreen = GameObject.Find("GameOverPanel");
+        if (victoryScreen == null)
+            victoryScreen = GameObject.Find("VictoryPanel");
+
+        // Lobby UI
+        if (lobbyStatusText == null)
+            lobbyStatusText = GameObject.Find("StatusText")
+                ?.GetComponent<TextMeshProUGUI>();
+        if (localIPText == null)
+            localIPText = GameObject.Find("LocalIPText")
+                ?.GetComponent<TextMeshProUGUI>();
+
+        // CharSelect UI
+        if (partySlotsParent == null)
+            partySlotsParent = GameObject.Find("PartySlots")
+                ?.transform;
+        if (classCardsParent == null)
+            classCardsParent = GameObject.Find("ClassCards")
+                ?.transform;
+        if (beginAdventureButton == null)
+            beginAdventureButton = GameObject.Find("BeginAdventureButton")
+                ?.GetComponent<Button>();
+
+        // GameOver/Victory
+        if (gameOverStatsText == null)
+            gameOverStatsText = GameObject.Find("StatsText")
+                ?.GetComponent<TextMeshProUGUI>();
+        if (victoryStatsText == null)
+            victoryStatsText = GameObject.Find("StatsText")
+                ?.GetComponent<TextMeshProUGUI>();
+    }
+    private void OnEnable()
+    {
+        SceneManager.sceneLoaded += OnSceneLoaded;
+    }
+
+    private void OnDisable()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded;
+    }
+
+    private void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+        //reset all references so they get refound
+        titleScreen = null;
+        lobbyScreen = null;
+        charSelectScreen = null;
+        dungeonScreen = null;
+        gameOverScreen = null;
+        victoryScreen = null;
+        lobbyStatusText = null;
+        localIPText = null;
+        partySlotsParent = null;
+        classCardsParent = null;
+        beginAdventureButton = null;
+        gameOverStatsText = null;
+        victoryStatsText = null;
+
+        FindScreenReferences();
+    }
     public void ShowScreen(string screenName)
     {
-        titleScreen.SetActive(false);
-        lobbyScreen.SetActive(false);
-        charSelectScreen.SetActive(false);
-        dungeonScreen.SetActive(false);
-        gameOverScreen.SetActive(false);
-        victoryScreen.SetActive(false);
+        if (titleScreen != null) titleScreen.SetActive(false);
+        if (lobbyScreen != null) lobbyScreen.SetActive(false);
+        if (charSelectScreen != null) charSelectScreen.SetActive(false);
+        if (dungeonScreen != null) dungeonScreen.SetActive(false);
+        if (gameOverScreen != null) gameOverScreen.SetActive(false);
+        if (victoryScreen != null) victoryScreen.SetActive(false);
 
         switch (screenName)
         {
-            case "Title": titleScreen.SetActive(true); break;
-            case "Lobby": lobbyScreen.SetActive(true); break;
-            case "CharSelect": charSelectScreen.SetActive(true); break;
-            case "Dungeon": dungeonScreen.SetActive(true); break;
-            case "GameOver": gameOverScreen.SetActive(true); break;
-            case "Victory": victoryScreen.SetActive(true); break;
+            case "Title": titleScreen?.SetActive(true); break;
+            case "Lobby": lobbyScreen?.SetActive(true); break;
+            case "CharSelect": charSelectScreen?.SetActive(true); break;
+            case "Dungeon": dungeonScreen?.SetActive(true); break;
+            case "GameOver": gameOverScreen?.SetActive(true); break;
+            case "Victory": victoryScreen?.SetActive(true); break;
         }
     }
 

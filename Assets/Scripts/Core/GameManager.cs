@@ -82,6 +82,8 @@ public class GameManager : MonoBehaviour
     public void GoToNextRoom()
     {
         currentRoomIndex++;
+        UIManager.Instance?.HideNextRoomButton();
+        UIManager.Instance?.HideShopPanel();
 
         switch (currentRoomIndex)
         {
@@ -123,7 +125,12 @@ public class GameManager : MonoBehaviour
 
     public bool UsePotion()
     {
-        if (potions <= 0) return false;
+        if (potions <= 0)
+        {
+            UIManager.Instance?.ShowNarrative(
+                "No potions left!");
+            return false;
+        }
 
         // Heal lowest HP living member
         PlayerRunTimeData target = null;
@@ -146,7 +153,15 @@ public class GameManager : MonoBehaviour
             target.currentHP + healAmount
         );
         potions--;
+        UIManager.Instance?.RefreshHUD();
+        UIManager.Instance?.ShowNarrative(
+            $"Used a potion! {target.playerName} restored 30 HP.");
         return true;
+
+    }
+    public void TryUsePotion()
+    {
+        UsePotion();
     }
 
 

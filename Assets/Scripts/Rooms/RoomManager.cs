@@ -33,12 +33,12 @@ public class RoomManager : MonoBehaviour
     {
         switch (GameManager.Instance.currentState)
         {
-            case GameState.EntranceHall:    HandleEntranceHall();    break;
-            case GameState.TrapRoom:        HandleTrapRoom();        break;
+            case GameState.EntranceHall: HandleEntranceHall(); break;
+            case GameState.TrapRoom: HandleTrapRoom(); break;
             case GameState.TreasureChamber: HandleTreasureChamber(); break;
-            case GameState.GoblinBarracks:  HandleGoblinBarracks();  break;
-            case GameState.Shop:            HandleShop();            break;
-            case GameState.WarchiefThrone:  HandleWarchiefThrone();  break;
+            case GameState.GoblinBarracks: HandleGoblinBarracks(); break;
+            case GameState.Shop: HandleShop(); break;
+            case GameState.WarchiefThrone: HandleWarchiefThrone(); break;
         }
     }
 
@@ -46,21 +46,22 @@ public class RoomManager : MonoBehaviour
     private void HandleEntranceHall()
     {
         UIManager.Instance.ShowNarrative(
-            "You stand at the entrance of the War Goblin's Lair.\n" +
-            "The stench of goblins fills the air.\n" +
-            "Prepare yourselves, adventurers!"
-        );
+         "You stand at the entrance of the War Goblin's Lair.\n" +
+         "The stench of goblins fills the air.\n" +
+         "Prepare yourselves, adventurers!"
+     );
+        UIManager.Instance.SetRoomTitle("Entrance Hall", "Room 1 of 6");
         UIManager.Instance.ShowNextRoomButton();
     }
 
     //room 2 trap room
     private void HandleTrapRoom()
     {
+        UIManager.Instance.SetRoomTitle("Trap Room", "Room 2 of 6");
         UIManager.Instance.ShowNarrative(
             "You hear a faint clicking sound...\n" +
             "Pressure plates are hidden beneath the stones!"
         );
-
         foreach (var member in GameManager.Instance.party)
         {
             if (member.isDead) continue;
@@ -105,21 +106,19 @@ public class RoomManager : MonoBehaviour
     //room 3 treasure chamber
     private void HandleTreasureChamber()
     {
+        UIManager.Instance.SetRoomTitle("Treasure Chamber", "Room 3 of 6");
         UIManager.Instance.ShowNarrative(
             "A massive pile of gold and gems lies ahead.\n" +
             "But a Guardian Golem blocks your path!"
         );
-
-        //start golem combat
         var enemies = new List<EnemyClass> { kingGolemSO };
         CombatManager.Instance.StartCombat(enemies);
         UIManager.Instance.ShowCombatPanel();
     }
-
     public void OnTreasureChamberCombatEnd()
     {
-        //generate 3 random treasures
         GenerateTreasures();
+        UIManager.Instance.HideCombatPanel();
         UIManager.Instance.ShowNextRoomButton();
     }
 
@@ -150,18 +149,15 @@ public class RoomManager : MonoBehaviour
     //room 4 goblin barracks
     private void HandleGoblinBarracks()
     {
-       UIManager.Instance.ShowNarrative(
+        UIManager.Instance.SetRoomTitle("Goblin Barracks", "Room 4 of 6");
+        UIManager.Instance.ShowNarrative(
             "A horde of goblins lies in wait!\n" +
             "Armed with crude weapons, they charge!"
         );
-
-        // 4-6 goblins
         int goblinCount = Random.Range(4, 7);
-        var enemies     = new List<EnemyClass>();
-
+        var enemies = new List<EnemyClass>();
         for (int i = 0; i < goblinCount; i++)
             enemies.Add(goblinMinionSO);
-
         CombatManager.Instance.StartCombat(enemies);
         UIManager.Instance.ShowCombatPanel();
     }
@@ -169,61 +165,94 @@ public class RoomManager : MonoBehaviour
     //room 5 shop
     private void HandleShop()
     {
+        UIManager.Instance.SetRoomTitle("Goblin Shop", "Room 5 of 6");
         UIManager.Instance.ShowNarrative(
             "A shady goblin merchant eyes you suspiciously.\n" +
             "\"Buy something or get out!\""
         );
-         UIManager.Instance.ShowShopPanel();
+        UIManager.Instance.ShowShopPanel();
     }
 
     public void BuyPotion()
     {
         if (GameManager.Instance.potions >= 5)
         {
-            UIManager.Instance.LogShop("You can't carry more than 5 potions!");
+            UIManager.Instance.LogShop(
+                "You can't carry more than 5 potions!");
             return;
         }
         if (GameManager.Instance.gold < 50)
         {
-            UIManager.Instance.LogShop("Not enough gold! (50g required)");
+            UIManager.Instance.LogShop(
+                "Not enough gold! (50g required)");
             return;
         }
         GameManager.Instance.gold -= 50;
         GameManager.Instance.AddPotion();
-        UIManager.Instance.LogShop("Bought a Health Potion for 50g!");
+        UIManager.Instance.LogShop(
+            "Bought a Health Potion for 50g!");
         UIManager.Instance.RefreshHUD();
     }
+
 
     public void RepairArmor(PlayerRunTimeData member)
     {
         if (member.currentArmor <= 0)
         {
             UIManager.Instance.LogShop(
-                $"{member.playerName}'s armor is destroyed and cannot be repaired!");
+                $"{member.playerName}'s armor is destroyed!");
             return;
         }
         if (GameManager.Instance.gold < 150)
         {
-            UIManager.Instance.LogShop("Not enough gold! (150g required)");
+            UIManager.Instance.LogShop(
+                "Not enough gold! (150g required)");
             return;
         }
         GameManager.Instance.gold -= 150;
         member.currentArmor = member.classTemplate.baseArmor;
         UIManager.Instance.LogShop(
-            $"{member.playerName}'s armor fully repaired for 150g!");
+            $"{member.playerName}'s armor repaired for 150g!");
         UIManager.Instance.RefreshHUD();
     }
 
     // room 6 
     private void HandleWarchiefThrone()
     {
+        UIManager.Instance.SetRoomTitle(
+            "Warchief's Throne", "Room 6 of 6 - BOSS");
         UIManager.Instance.ShowNarrative(
             "The Goblin Warchief rises from his throne!\n" +
             "\"You dare challenge ME?!\"\n" +
-            "The final battle begins!");
-
+            "The final battle begins!"
+        );
         var enemies = new List<EnemyClass> { goblinWarchiefSO };
         CombatManager.Instance.StartCombat(enemies);
         UIManager.Instance.ShowCombatPanel();
+    }
+    public void OnCombatEnded()
+    {
+        switch (GameManager.Instance.currentState)
+        {
+            case GameState.TreasureChamber:
+                OnTreasureChamberCombatEnd();
+                break;
+            case GameState.GoblinBarracks:
+                UIManager.Instance.ShowNarrative(
+                    "The goblins are defeated! Loot their remains...");
+                UIManager.Instance.ShowNextRoomButton();
+                break;
+            case GameState.WarchiefThrone:
+                UIManager.Instance.ShowNarrative(
+                    "The Goblin Warchief has been defeated!\n" +
+                    "VICTORY!");
+                GameManager.Instance.ChangeState(GameState.Victory);
+                break;
+        }
+    }
+    public void RepairArmorAll()
+    {
+        foreach (var member in GameManager.Instance.party)
+            RepairArmor(member);
     }
 }
