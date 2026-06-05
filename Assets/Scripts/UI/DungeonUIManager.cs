@@ -37,6 +37,7 @@ public class DungeonUIManager : MonoBehaviour
     public GameObject cmLogEntryPrefab;
     public Button cmAttackButton;
     public Button cmPotionButton;
+    public Button cmReviveButton;
     public Button cmSkillButton;    // ← add
     public Button cmUltimateButton; // ← add
     public TextMeshProUGUI cmSkillText;    // ← button label
@@ -90,11 +91,10 @@ public class DungeonUIManager : MonoBehaviour
             cmPotionButton.onClick.AddListener(() =>
                 GameManager.Instance.UsePotion());
 
-        if (cmPotionButton != null)
-            cmPotionButton.onClick.AddListener(() =>
-                GameManager.Instance.UsePotion());
-
-
+        // Wire revive potion button
+        if (cmReviveButton != null)
+            cmReviveButton.onClick.AddListener(() =>
+                GameManager.Instance.UseRevivePotion());
 
         // Refresh HUD
         RefreshHUD();
