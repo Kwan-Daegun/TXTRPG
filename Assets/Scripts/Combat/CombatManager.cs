@@ -274,16 +274,25 @@ public class CombatManager : MonoBehaviour
 
         DungeonUIManager.Instance.RefreshHUD();
 
-        currentEnemyIndex++;
-        if (currentEnemyIndex >= enemies.Count)
+        // Only advance the current enemy pointer when the active enemy died.
+        if (CurrentEnemy == enemy)
         {
-            // All enemies dead
-            OnCombatEnd?.Invoke();
-            DungeonUIManager.Instance.HideCombatPanel();
-            RoomManager.Instance.OnCombatEnded();
-        }
-        else
-        {
+            currentEnemyIndex++;
+            while (currentEnemyIndex < enemies.Count &&
+                   enemies[currentEnemyIndex].isDead)
+            {
+                currentEnemyIndex++;
+            }
+
+            if (currentEnemyIndex >= enemies.Count)
+            {
+                // All enemies dead
+                OnCombatEnd?.Invoke();
+                DungeonUIManager.Instance.HideCombatPanel();
+                RoomManager.Instance.OnCombatEnded();
+                return;
+            }
+
             // Auto advance to next enemy
             DungeonUIManager.Instance.LogCombat(
                 $"Next enemy appears!");
@@ -360,6 +369,7 @@ public class CombatManager : MonoBehaviour
                 int frostDmg = attacker.RollAttack();
                 enemy.TakeDamage(frostDmg);
                 log += $"\n{enemy.enemyName} takes {frostDmg} damage!";
+                if (enemy.isDead) HandleEnemyDeath(enemy);
                 attacker.skillCooldownLeft =
                     attacker.classTemplate.skillCooldown;
                 break;
