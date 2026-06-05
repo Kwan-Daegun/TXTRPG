@@ -28,7 +28,7 @@ public class NetworkBootstrapper : MonoBehaviour
         SetTransport();
         NetworkManager.Singleton.StartHost();
         Debug.Log($"[HOST] Started on port {port}");
-        GameManager.Instance.ChangeState(GameState.CharacterSelect);
+        GameManager.Instance.ChangeState(GameState.Lobby);
     }
 
     // client joins the game using teh hot ip addrews

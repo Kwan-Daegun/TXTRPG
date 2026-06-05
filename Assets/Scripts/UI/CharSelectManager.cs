@@ -1,7 +1,7 @@
 // CharSelectManager.cs
 using UnityEngine;
 using System.Collections.Generic;
-
+using Unity.Netcode;
 public class CharSelectManager : MonoBehaviour
 {
     public static CharSelectManager Instance { get; private set; }
@@ -121,20 +121,34 @@ public class CharSelectManager : MonoBehaviour
     }
 
 
-    public void BeginAdventure()
+    // CharSelectManager.cs
+public void BeginAdventure()
+{
+    if (GameManager.Instance == null) return;
+
+    GameManager.Instance.party.Clear();
+
+    for (int i = 0; i < _selectedClasses.Count; i++)
     {
-        GameManager.Instance.party.Clear();
+        var data = new PlayerRunTimeData();
+        data.Initialize(
+            _selectedClasses[i],
+            _selectedClasses[i].className,
+            (ulong)i);
+        GameManager.Instance.party.Add(data);
+    }
 
-        for (int i = 0; i < _selectedClasses.Count; i++)
-        {
-            var data = new PlayerRunTimeData();
-            data.Initialize(
-                _selectedClasses[i],
-                $"{_selectedClasses[i].className}",
-                (ulong)i);
-            GameManager.Instance.party.Add(data);
-        }
-
+    // Host tells everyone to start dungeon
+    if (NetworkManager.Singleton.IsHost)
+    {
+        NetworkGameSync.Instance.ChangeGameStateServerRpc(
+            GameState.EntranceHall);
+    }
+    else
+    {
+        // Client just notifies host of their choice
+        // For simplicity: everyone starts together
         GameManager.Instance.StartDungeon();
     }
+}
 }

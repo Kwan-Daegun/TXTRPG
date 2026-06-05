@@ -1,6 +1,6 @@
 using UnityEngine;
 using System.Collections.Generic;
-
+using Unity.Netcode;
 public class CombatManager : MonoBehaviour
 {
     public static CombatManager Instance { get; private set; }
@@ -314,7 +314,28 @@ public class CombatManager : MonoBehaviour
     {
         return currentEnemyIndex >= enemies.Count;
     }
+    // Any player clicks Attack → tells server → server runs combat → 
+    // ClientRpc shows result on all screens
+
     public void PlayerAttackAll()
+    {
+        if (NetworkManager.Singleton.IsServer)
+        {
+            RunAttackServer();
+        }
+        else
+        {
+            RequestAttackServerRpc();
+        }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void RequestAttackServerRpc()
+    {
+        RunAttackServer();
+    }
+
+    private void RunAttackServer()
     {
         foreach (var member in GameManager.Instance.party)
         {
@@ -322,11 +343,23 @@ public class CombatManager : MonoBehaviour
                 && !CurrentEnemy.isDead)
             {
                 PlayerAttack(member);
-                member.TickCooldowns(); // ← add this
+                member.TickCooldowns();
             }
         }
-        DungeonUIManager.Instance.RefreshHUD();
-        DungeonUIManager.Instance.RefreshCombatPanel();
+
+        // Tell all clients to refresh UI
+        string enemyStats = CurrentEnemy != null
+            ? $"{CurrentEnemy.enemyName}|{CurrentEnemy.currentHP}|{CurrentEnemy.currentArmor}"
+            : "dead";
+
+        SyncCombatStateClientRpc(enemyStats);
+    }
+
+    [ClientRpc]
+    private void SyncCombatStateClientRpc(string enemyData)
+    {
+        DungeonUIManager.Instance?.RefreshHUD();
+        DungeonUIManager.Instance?.RefreshCombatPanel();
     }
     public void PlayerSkill(PlayerRunTimeData attacker)
     {
