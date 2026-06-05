@@ -37,8 +37,13 @@ public class DungeonUIManager : MonoBehaviour
     public GameObject cmLogEntryPrefab;
     public Button cmAttackButton;
     public Button cmPotionButton;
+    public Button cmSkillButton;    // ← add
+    public Button cmUltimateButton; // ← add
+    public TextMeshProUGUI cmSkillText;    // ← button label
+    public TextMeshProUGUI cmUltimateText;
 
     public TextMeshProUGUI combatTitleText;
+    private int _activePartyIndex = 0;
 
     private void Awake()
     {
@@ -51,6 +56,21 @@ public class DungeonUIManager : MonoBehaviour
     }
     private void Start()
     {
+        if (cmSkillButton != null)
+            cmSkillButton.onClick.AddListener(() =>
+            {
+                var active = GetActivePartyMember();
+                if (active != null)
+                    CombatManager.Instance.PlayerSkill(active);
+            });
+
+        if (cmUltimateButton != null)
+            cmUltimateButton.onClick.AddListener(() =>
+            {
+                var active = GetActivePartyMember();
+                if (active != null)
+                    CombatManager.Instance.PlayerUltimate(active);
+            });
         // Wire proceed button
         if (nextRoomButton != null)
         {
@@ -185,30 +205,67 @@ public class DungeonUIManager : MonoBehaviour
 
     // ===== COMBAT PANEL =====
     public void RefreshCombatPanel()
+{
+    var enemy = CombatManager.Instance.CurrentEnemy;
+    if (enemy == null) return;
+
+    if (combatTitleText != null)
+        combatTitleText.text = $"Combat! vs {enemy.enemyName}";
+
+    // Enemy stats
+    if (cmEnemyStatsText != null)
+        cmEnemyStatsText.text =
+            $"{enemy.enemyName}\n" +
+            $"HP: {enemy.currentHP}/{enemy.template.baseHP}\n" +
+            $"Armor: {enemy.currentArmor}";
+
+    // Party stats with cooldowns
+    string partyStats = "";
+    foreach (var member in GameManager.Instance.party)
     {
-        var enemy = CombatManager.Instance.CurrentEnemy;
-        if (enemy == null) return;
+        string skillCD = member.skillCooldownLeft > 0 ?
+            $"({member.skillCooldownLeft})" : "Ready";
+        string ultCD = member.ultimateCooldownLeft > 0 ?
+            $"({member.ultimateCooldownLeft})" : "Ready";
 
-        if (combatTitleText != null)
-            combatTitleText.text = $"Combat! vs {enemy.enemyName}";
+        partyStats +=
+            $"{member.playerName}" +
+            $"{(member.isDead ? " [DEAD]" : "")}\n" +
+            $"HP: {member.currentHP}/{member.classTemplate.baseHP}\n" +
+            $"Skill: {skillCD} Ult: {ultCD}\n\n";
+    }
 
-        // Enemy stats - single TMP text
-        if (cmEnemyStatsText != null)
-            cmEnemyStatsText.text =
-                $"{enemy.enemyName}\n" +
-                $"HP: {enemy.currentHP}/{enemy.template.baseHP}\n" +
-                $"Armor: {enemy.currentArmor}";
+    if (cmPartyStatsText != null)
+        cmPartyStatsText.text = partyStats;
 
-        // Party stats - single TMP text
-        string partyStats = "";
-        foreach (var member in GameManager.Instance.party)
-            partyStats +=
-                $"{member.playerName}\n" +
-                $"HP: {member.currentHP}/{member.classTemplate.baseHP}\n" +
-                $"Armor: {member.currentArmor}\n\n";
+    // Update skill/ultimate button labels
+    var active = GetActivePartyMember();
+    if (active != null)
+    {
+        if (cmSkillText != null)
+            cmSkillText.text = active.CanUseSkill() ?
+                active.classTemplate.skillName :
+                $"{active.classTemplate.skillName} " +
+                $"({active.skillCooldownLeft})";
 
-        if (cmPartyStatsText != null)
-            cmPartyStatsText.text = partyStats;
+        if (cmUltimateText != null)
+            cmUltimateText.text = active.CanUseUltimate() ?
+                active.classTemplate.ultimateName :
+                $"{active.classTemplate.ultimateName} " +
+                $"({active.ultimateCooldownLeft})";
+    }
+}
+    public PlayerRunTimeData GetActivePartyMember()
+    {
+        var party = GameManager.Instance.party;
+        // Find next living member
+        for (int i = 0; i < party.Count; i++)
+        {
+            int idx = (_activePartyIndex + i) % party.Count;
+            if (!party[idx].isDead)
+                return party[idx];
+        }
+        return null;
     }
 
 }

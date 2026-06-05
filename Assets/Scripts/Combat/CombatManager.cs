@@ -161,6 +161,22 @@ public class CombatManager : MonoBehaviour
 
     private void EnemyAttack(EnemyRuntimeData enemy)
     {
+        // Check if enemy is frozen or vined
+        if (enemy.isFrozen)
+        {
+            enemy.isFrozen = false;
+            DungeonUIManager.Instance.LogCombat(
+                $"{enemy.enemyName} is frozen and cannot attack!");
+            return;
+        }
+
+        if (enemy.isVined)
+        {
+            enemy.isVined = false;
+            DungeonUIManager.Instance.LogCombat(
+                $"{enemy.enemyName} is vined and cannot attack!");
+            return;
+        }
         // enemy will oick a random living party member
         var living = GameManager.Instance.party.FindAll(p => !p.isDead);
         if (living.Count == 0) return;
@@ -297,8 +313,233 @@ public class CombatManager : MonoBehaviour
                 && !CurrentEnemy.isDead)
             {
                 PlayerAttack(member);
+                member.TickCooldowns(); // ← add this
             }
         }
         DungeonUIManager.Instance.RefreshHUD();
+        DungeonUIManager.Instance.RefreshCombatPanel();
     }
+    public void PlayerSkill(PlayerRunTimeData attacker)
+    {
+        if (!attacker.CanUseSkill())
+        {
+            DungeonUIManager.Instance.LogCombat(
+                $"{attacker.playerName}'s skill is on cooldown! " +
+                $"({attacker.skillCooldownLeft} turns left)");
+            return;
+        }
+
+        var enemy = CurrentEnemy;
+        if (enemy == null || enemy.isDead) return;
+
+        string className = attacker.classTemplate.className;
+        string log = "";
+
+        switch (className)
+        {
+            case "Warrior": // Cleave — hits all enemies
+                log = $"{attacker.playerName} uses CLEAVE!";
+                foreach (var e in enemies)
+                {
+                    if (!e.isDead)
+                    {
+                        int dmg = attacker.RollAttack();
+                        e.TakeDamage(dmg);
+                        log += $"\n{e.enemyName} takes {dmg} damage!";
+                        if (e.isDead) HandleEnemyDeath(e);
+                    }
+                }
+                attacker.skillCooldownLeft =
+                    attacker.classTemplate.skillCooldown;
+                break;
+
+            case "Mage": // Frost Nova — skip enemy turn
+                log = $"{attacker.playerName} uses FROST NOVA!\n" +
+                     $"{enemy.enemyName} is frozen!";
+                enemy.isFrozen = true;
+                int frostDmg = attacker.RollAttack();
+                enemy.TakeDamage(frostDmg);
+                log += $"\n{enemy.enemyName} takes {frostDmg} damage!";
+                attacker.skillCooldownLeft =
+                    attacker.classTemplate.skillCooldown;
+                break;
+
+            case "Ranger": // Multi Shot — hits 2x
+                log = $"{attacker.playerName} uses MULTI SHOT!";
+                for (int i = 0; i < 2; i++)
+                {
+                    if (!enemy.isDead)
+                    {
+                        int dmg = attacker.RollAttack();
+                        enemy.TakeDamage(dmg);
+                        log += $"\nHit {i + 1}: {dmg} damage!";
+                    }
+                }
+                if (enemy.isDead) HandleEnemyDeath(enemy);
+                attacker.skillCooldownLeft =
+                    attacker.classTemplate.skillCooldown;
+                break;
+
+            case "Ninja": // Shadow Strike — shield next hit
+                log = $"{attacker.playerName} uses SHADOW STRIKE!\n" +
+                     $"Next attack will be dodged!";
+                attacker.isShieldedNextHit = true;
+                int ninjaSkillDmg = attacker.RollAttack();
+                enemy.TakeDamage(ninjaSkillDmg);
+                log += $"\n{enemy.enemyName} takes {ninjaSkillDmg} damage!";
+                if (enemy.isDead) HandleEnemyDeath(enemy);
+                attacker.skillCooldownLeft =
+                    attacker.classTemplate.skillCooldown;
+                break;
+
+            case "Thief": // Steal gold
+                int stolenGold = Random.Range(10, 30);
+                GameManager.Instance.AddGold(stolenGold);
+                log = $"{attacker.playerName} uses STEAL!\n" +
+                     $"Stole {stolenGold} gold!";
+                attacker.skillCooldownLeft =
+                    attacker.classTemplate.skillCooldown;
+                break;
+
+            case "Druid": // Nature Heal — heal all
+                int healAmount = 20;
+                log = $"{attacker.playerName} uses NATURE HEAL!";
+                foreach (var member in GameManager.Instance.party)
+                {
+                    if (!member.isDead)
+                    {
+                        member.currentHP = Mathf.Min(
+                            member.classTemplate.baseHP,
+                            member.currentHP + healAmount);
+                        log += $"\n{member.playerName} healed " +
+                               $"{healAmount} HP!";
+                    }
+                }
+                attacker.skillCooldownLeft =
+                    attacker.classTemplate.skillCooldown;
+                break;
+        }
+
+        DungeonUIManager.Instance.LogCombat(log);
+        DungeonUIManager.Instance.RefreshCombatPanel();
+        DungeonUIManager.Instance.RefreshHUD();
+
+        // Enemy turn after skill
+        if (!enemy.isDead) EnemyAttack(enemy);
+        GameManager.Instance.CheckPartyStatus();
+    }
+
+    // ===== ULTIMATE =====
+    public void PlayerUltimate(PlayerRunTimeData attacker)
+    {
+        if (!attacker.CanUseUltimate())
+        {
+            DungeonUIManager.Instance.LogCombat(
+                $"{attacker.playerName}'s ultimate is on cooldown! " +
+                $"({attacker.ultimateCooldownLeft} turns left)");
+            return;
+        }
+
+        var enemy = CurrentEnemy;
+        if (enemy == null || enemy.isDead) return;
+
+        string className = attacker.classTemplate.className;
+        string log = "";
+
+        switch (className)
+        {
+            case "Warrior": // Berserker Rage — ATK x3
+                int berserkDmg = attacker.RollAttack() * 3;
+                enemy.TakeDamage(berserkDmg);
+                log = $"{attacker.playerName} uses BERSERKER RAGE!\n" +
+                     $"{enemy.enemyName} takes {berserkDmg} damage!";
+                if (enemy.isDead) HandleEnemyDeath(enemy);
+                attacker.ultimateCooldownLeft =
+                    attacker.classTemplate.ultimateCooldown;
+                break;
+
+            case "Mage": // Blizzard — massive AoE
+                log = $"{attacker.playerName} uses BLIZZARD!";
+                foreach (var e in enemies)
+                {
+                    if (!e.isDead)
+                    {
+                        int dmg = attacker.RollAttack() * 2;
+                        e.TakeDamage(dmg);
+                        log += $"\n{e.enemyName} takes {dmg} damage!";
+                        if (e.isDead) HandleEnemyDeath(e);
+                    }
+                }
+                attacker.ultimateCooldownLeft =
+                    attacker.classTemplate.ultimateCooldown;
+                break;
+
+            case "Ranger": // Rain of Arrows — ATK x2.5
+                int rainDmg = (int)(attacker.RollAttack() * 2.5f);
+                enemy.TakeDamage(rainDmg);
+                log = $"{attacker.playerName} uses RAIN OF ARROWS!\n" +
+                     $"{enemy.enemyName} takes {rainDmg} damage!";
+                if (enemy.isDead) HandleEnemyDeath(enemy);
+                attacker.ultimateCooldownLeft =
+                    attacker.classTemplate.ultimateCooldown;
+                break;
+
+            case "Ninja": // Assassinate — instant kill if HP < 30%
+                float hpPercent = (float)enemy.currentHP /
+                                  enemy.template.baseHP;
+                if (hpPercent < 0.3f)
+                {
+                    enemy.currentHP = 0;
+                    enemy.isDead = true;
+                    log = $"{attacker.playerName} uses ASSASSINATE!\n" +
+                         $"INSTANT KILL!";
+                    HandleEnemyDeath(enemy);
+                }
+                else
+                {
+                    int ninjaUltDmg = attacker.RollAttack() * 2;
+                    enemy.TakeDamage(ninjaUltDmg);
+                    log = $"{attacker.playerName} uses ASSASSINATE!\n" +
+                         $"Enemy HP too high! Deals {ninjaUltDmg} instead.";
+                    if (enemy.isDead) HandleEnemyDeath(enemy);
+                }
+                attacker.ultimateCooldownLeft =
+                    attacker.classTemplate.ultimateCooldown;
+                break;
+
+            case "Thief": // Smoke Bomb — dodge all attacks
+                attacker.isSmokeBombed = true;
+                int smokeDmg = attacker.RollAttack();
+                enemy.TakeDamage(smokeDmg);
+                log = $"{attacker.playerName} uses SMOKE BOMB!\n" +
+                     $"Will dodge next attack!\n" +
+                     $"{enemy.enemyName} takes {smokeDmg} damage!";
+                if (enemy.isDead) HandleEnemyDeath(enemy);
+                attacker.ultimateCooldownLeft =
+                    attacker.classTemplate.ultimateCooldown;
+                break;
+
+            case "Druid": // Summon Vines — enemy can't attack
+                enemy.isVined = true;
+                int vineDmg = attacker.RollAttack();
+                enemy.TakeDamage(vineDmg);
+                log = $"{attacker.playerName} uses SUMMON VINES!\n" +
+                     $"{enemy.enemyName} is vined! Can't attack!\n" +
+                     $"Takes {vineDmg} damage!";
+                if (enemy.isDead) HandleEnemyDeath(enemy);
+                attacker.ultimateCooldownLeft =
+                    attacker.classTemplate.ultimateCooldown;
+                break;
+        }
+
+        DungeonUIManager.Instance.LogCombat(log);
+        DungeonUIManager.Instance.RefreshCombatPanel();
+        DungeonUIManager.Instance.RefreshHUD();
+
+        // Enemy turn after ultimate
+        if (!enemy.isDead) EnemyAttack(enemy);
+        GameManager.Instance.CheckPartyStatus();
+    }
+
+
 }

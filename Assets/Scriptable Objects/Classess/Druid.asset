@@ -22,3 +22,9 @@ MonoBehaviour:
   dodgeChance: 20
   blockChance: 15
   counterChance: 15
+  skillName: Nature Heal
+  skillDescription: Heal all party
+  skillCooldown: 2
+  ultimateName: Summon Vines
+  ultimateDescription: Enemy can't attack
+  ultimateCooldown: 5

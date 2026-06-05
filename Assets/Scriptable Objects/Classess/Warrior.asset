@@ -22,3 +22,9 @@ MonoBehaviour:
   dodgeChance: 15
   blockChance: 30
   counterChance: 10
+  skillName: 'Cleave '
+  skillDescription: Hit all enemies
+  skillCooldown: 2
+  ultimateName: Berserker Rage
+  ultimateDescription: ATK x3
+  ultimateCooldown: 5

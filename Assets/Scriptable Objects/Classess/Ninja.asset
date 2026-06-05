@@ -22,3 +22,9 @@ MonoBehaviour:
   dodgeChance: 35
   blockChance: 5
   counterChance: 15
+  skillName: Shadow Strike
+  skillDescription: Shield next hit
+  skillCooldown: 2
+  ultimateName: Assassinate
+  ultimateDescription: Instant kill <30% HP
+  ultimateCooldown: 5

@@ -22,3 +22,9 @@ MonoBehaviour:
   dodgeChance: 25
   blockChance: 10
   counterChance: 20
+  skillName: Multi Shot
+  skillDescription: Hit 2x
+  skillCooldown: 2
+  ultimateName: Rain of Arrows
+  ultimateDescription: ATK x2.5
+  ultimateCooldown: 5

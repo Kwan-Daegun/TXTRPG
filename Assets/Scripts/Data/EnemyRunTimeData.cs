@@ -9,6 +9,8 @@ public class EnemyRuntimeData
     public int currentHP;
     public int currentArmor;
     public bool isDead;
+    public bool isFrozen; 
+    public bool isVined;   
 
     public void Initialize(EnemyClass so)
     {

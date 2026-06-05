@@ -22,3 +22,9 @@ MonoBehaviour:
   dodgeChance: 20
   blockChance: 5
   counterChance: 25
+  skillName: Frost Nova
+  skillDescription: Freeze enemy
+  skillCooldown: 2
+  ultimateName: Blizzard
+  ultimateDescription: Massive AoE
+  ultimateCooldown: 5

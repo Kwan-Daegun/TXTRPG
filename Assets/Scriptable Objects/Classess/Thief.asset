@@ -22,3 +22,9 @@ MonoBehaviour:
   dodgeChance: 40
   blockChance: 5
   counterChance: 20
+  skillName: Steal
+  skillDescription: Steal gold
+  skillCooldown: 2
+  ultimateName: Smoke Bomb
+  ultimateDescription: Dodge next attack
+  ultimateCooldown: 5

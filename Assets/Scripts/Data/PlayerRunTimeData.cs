@@ -16,15 +16,25 @@ public class PlayerRunTimeData
     [Header("Network")]
     public ulong ownerClientId;
 
+    [Header("Cooldowns")]
+    public int skillCooldownLeft;
+    public int ultimateCooldownLeft;
+
+    [Header("Status Effects")]
+    public bool isShieldedNextHit;   // Ninja shadow strike
+    public bool isFrozen;            // Mage frost nova
+    public bool isSmokeBombed;       // Thief smoke bomb
+    public bool isVined;
+
     // Initialize from SO template
     public void Initialize(CharacterClass template, string name, ulong clientId)
     {
-        classTemplate     = template;
-        playerName        = name;
-        currentHP         = template.baseHP;
-        currentArmor      = template.baseArmor;
-        isDead            = false;
-        ownerClientId     = clientId;
+        classTemplate = template;
+        playerName = name;
+        currentHP = template.baseHP;
+        currentArmor = template.baseArmor;
+        isDead = false;
+        ownerClientId = clientId;
     }
 
     // Combat helpers
@@ -40,17 +50,39 @@ public class PlayerRunTimeData
 
     public void TakeDamage(int damage)
     {
-        if (currentArmor > 0)
+        // Smoke bomb — dodge all
+        if (isSmokeBombed)
         {
-            // Armor absorbs damge hoho
-            if (currentArmor >= damage)
-            {
-                // Reduce armor by 10%
-                currentArmor = Mathf.Max(0, currentArmor - Mathf.CeilToInt(classTemplate.baseArmor * 0.1f));
-                return;
-            }
+            isSmokeBombed = false;
+            return;
         }
-        currentHP = Mathf.Max(0, currentHP - damage);
-        if (currentHP <= 0) isDead = true;
+
+        // Ninja shield
+        if (isShieldedNextHit)
+        {
+            isShieldedNextHit = false;
+            return;
+        }
+
+        int remainingDamage = damage - currentArmor;
+        if (currentArmor > 0)
+            currentArmor = Mathf.Max(0,
+                currentArmor - Mathf.CeilToInt(
+                    classTemplate.baseArmor * 0.1f));
+
+        if (remainingDamage > 0)
+        {
+            currentHP = Mathf.Max(0, currentHP - remainingDamage);
+            if (currentHP <= 0) isDead = true;
+        }
+
+    }
+    public bool CanUseSkill() => skillCooldownLeft <= 0;
+    public bool CanUseUltimate() => ultimateCooldownLeft <= 0;
+
+    public void TickCooldowns()
+    {
+        if (skillCooldownLeft > 0) skillCooldownLeft--;
+        if (ultimateCooldownLeft > 0) ultimateCooldownLeft--;
     }
 }
