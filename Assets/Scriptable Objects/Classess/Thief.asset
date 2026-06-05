@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94c9093fd4da93d4b8c439a20b3b4ee3, type: 3}
   m_Name: Thief
   m_EditorClassIdentifier: 
-  className: Para Ikit
-  weaponName: xiaomi 17t
-  classIcon: {fileID: 0}
+  className: Thief
+  weaponName: Dagger
+  classIcon: {fileID: -3768313404332104141, guid: f6d5cd1bbdeebdb40bbe1c329f6c4a59, type: 3}
   baseHP: 60
   baseArmor: 10
   minAttack: 10

@@ -82,7 +82,7 @@ public class NetworkBootstrapper : MonoBehaviour
     public void Disconnect()
     {
         NetworkManager.Singleton.Shutdown();
-        GameManager.Instance.ChangeState(GameState.Title);
+        GameManager.Instance.ChangeState(GameState.Lobby);
     }
     public string GetLocalIP()
     {

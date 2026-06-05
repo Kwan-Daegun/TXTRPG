@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94c9093fd4da93d4b8c439a20b3b4ee3, type: 3}
   m_Name: Druid
   m_EditorClassIdentifier: 
-  className: IDK
-  weaponName: Samsung
-  classIcon: {fileID: 0}
+  className: Druid
+  weaponName: ' Sickle'
+  classIcon: {fileID: 4743971200383838015, guid: b6785679c35f52e4aaeca3463a084766, type: 3}
   baseHP: 75
   baseArmor: 15
   minAttack: 15

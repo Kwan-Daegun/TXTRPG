@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94c9093fd4da93d4b8c439a20b3b4ee3, type: 3}
   m_Name: Ninja
   m_EditorClassIdentifier: 
-  className: Fruit Ninja
-  weaponName: Iphone15
-  classIcon: {fileID: 0}
+  className: Ninja
+  weaponName: Katana
+  classIcon: {fileID: 1039290088143946559, guid: de9f0a4001e947d46a3267cddbb08668, type: 3}
   baseHP: 60
   baseArmor: 10
   minAttack: 30

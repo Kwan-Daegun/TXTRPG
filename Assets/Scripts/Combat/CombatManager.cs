@@ -40,6 +40,19 @@ public class CombatManager : MonoBehaviour
             enemies.Add(enemy);
         }
     }
+    public void NextEnemy()
+    {
+        if (IsCombatOver())
+        {
+            OnCombatEnd?.Invoke();
+            DungeonUIManager.Instance.HideCombatPanel();
+            RoomManager.Instance.OnCombatEnded();
+        }
+        else
+        {
+            DungeonUIManager.Instance.RefreshCombatPanel();
+        }
+    }
 
     public EnemyRuntimeData CurrentEnemy =>
         currentEnemyIndex < enemies.Count ? enemies[currentEnemyIndex] : null;
@@ -234,6 +247,7 @@ public class CombatManager : MonoBehaviour
 
     private void HandleEnemyDeath(EnemyRuntimeData enemy)
     {
+        // Loot
         int gold = Random.Range(
             enemy.template.goldDropMin,
             enemy.template.goldDropMax + 1);
@@ -242,16 +256,22 @@ public class CombatManager : MonoBehaviour
         if (Random.Range(0, 100) < enemy.template.PotionDropChance)
             GameManager.Instance.AddPotion();
 
-        UIManager.Instance.RefreshHUD();
+        DungeonUIManager.Instance.RefreshHUD();
 
         currentEnemyIndex++;
         if (currentEnemyIndex >= enemies.Count)
         {
+            // All enemies dead
             OnCombatEnd?.Invoke();
-            UIManager.Instance.HideCombatPanel();
-
-            // Notify RoomManager
+            DungeonUIManager.Instance.HideCombatPanel();
             RoomManager.Instance.OnCombatEnded();
+        }
+        else
+        {
+            // Auto advance to next enemy
+            DungeonUIManager.Instance.LogCombat(
+                $"Next enemy appears!");
+            DungeonUIManager.Instance.RefreshCombatPanel();
         }
     }
 
@@ -260,8 +280,8 @@ public class CombatManager : MonoBehaviour
     {
         combatLog.Add(result);
         OnCombatEvent?.Invoke(result);
-        UIManager.Instance.LogCombat(result.message);
-        UIManager.Instance.RefreshCombatPanel();
+        DungeonUIManager.Instance.LogCombat(result.message);
+        DungeonUIManager.Instance.RefreshCombatPanel();
     }
 
 
@@ -279,6 +299,6 @@ public class CombatManager : MonoBehaviour
                 PlayerAttack(member);
             }
         }
-        UIManager.Instance.RefreshHUD();
+        DungeonUIManager.Instance.RefreshHUD();
     }
 }

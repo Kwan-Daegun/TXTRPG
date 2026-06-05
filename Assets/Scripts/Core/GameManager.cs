@@ -17,6 +17,10 @@ public class GameManager : MonoBehaviour
     public int gold = 0;
     public int potions = 0;
 
+    public int revivePotions = 0;
+
+    public void AddRevivePotion() => revivePotions++;
+
     [Header("Room Tracking")]
     public int currentRoomIndex = 0;
     public string[] roomNames = new string[]
@@ -82,8 +86,9 @@ public class GameManager : MonoBehaviour
     public void GoToNextRoom()
     {
         currentRoomIndex++;
-        UIManager.Instance?.HideNextRoomButton();
-        UIManager.Instance?.HideShopPanel();
+        DungeonUIManager.Instance?.HideNextRoomButton();
+        DungeonUIManager.Instance?.HideShopPanel();
+        DungeonUIManager.Instance?.HideCombatPanel();
 
         switch (currentRoomIndex)
         {
@@ -127,7 +132,7 @@ public class GameManager : MonoBehaviour
     {
         if (potions <= 0)
         {
-            UIManager.Instance?.ShowNarrative(
+            DungeonUIManager.Instance?.ShowNarrative(
                 "No potions left!");
             return false;
         }
@@ -153,8 +158,8 @@ public class GameManager : MonoBehaviour
             target.currentHP + healAmount
         );
         potions--;
-        UIManager.Instance?.RefreshHUD();
-        UIManager.Instance?.ShowNarrative(
+        DungeonUIManager.Instance?.RefreshHUD();
+        DungeonUIManager.Instance?.ShowNarrative(
             $"Used a potion! {target.playerName} restored 30 HP.");
         return true;
 
@@ -178,5 +183,33 @@ public class GameManager : MonoBehaviour
         potions = 0;
         currentRoomIndex = -1;
         ChangeState(GameState.Title);
+    }
+    public bool UseRevivePotion()
+    {
+        if (revivePotions <= 0) return false;
+
+        // Find first dead member
+        PlayerRunTimeData target = null;
+        foreach (var member in GameManager.Instance.party)
+        {
+            if (member.isDead)
+            {
+                target = member;
+                break;
+            }
+        }
+
+        if (target == null) return false;
+
+        // Revive with 50% HP
+        target.isDead = false;
+        target.currentHP = target.classTemplate.baseHP / 2;
+        revivePotions--;
+
+        DungeonUIManager.Instance?.ShowNarrative(
+            $"{target.playerName} has been revived with " +
+            $"{target.currentHP} HP!");
+        DungeonUIManager.Instance?.RefreshHUD();
+        return true;
     }
 }

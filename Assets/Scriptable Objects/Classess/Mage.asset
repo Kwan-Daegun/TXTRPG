@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94c9093fd4da93d4b8c439a20b3b4ee3, type: 3}
   m_Name: Mage
   m_EditorClassIdentifier: 
-  className: Capucina
+  className: Mage
   weaponName: Book
-  classIcon: {fileID: 0}
+  classIcon: {fileID: 8602205992103896309, guid: 65b728af77ec99c4aa1d8aa20e7a0be5, type: 3}
   baseHP: 75
   baseArmor: 15
   minAttack: 10

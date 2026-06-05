@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94c9093fd4da93d4b8c439a20b3b4ee3, type: 3}
   m_Name: Ranger
   m_EditorClassIdentifier: 
-  className: Green Ranger
+  className: Ranger
   weaponName: Bow
-  classIcon: {fileID: 0}
+  classIcon: {fileID: -2262028302997907133, guid: d584418b1d90d0b42864d81519b2b894, type: 3}
   baseHP: 80
   baseArmor: 15
   minAttack: 15

@@ -12,9 +12,9 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 94c9093fd4da93d4b8c439a20b3b4ee3, type: 3}
   m_Name: Warrior
   m_EditorClassIdentifier: 
-  className: Bakla ako
+  className: Warrior
   weaponName: Axe
-  classIcon: {fileID: 0}
+  classIcon: {fileID: -182120602654203209, guid: 692e49695e4db4249ab209973d98d29b, type: 3}
   baseHP: 100
   baseArmor: 20
   minAttack: 20
