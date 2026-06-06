@@ -12,7 +12,7 @@ public class LobbyUIManager : MonoBehaviour
     public TextMeshProUGUI statusText;
     public TextMeshProUGUI localIPText;
     public TextMeshProUGUI playerCountText;
-    public Button startGameButton; // only host sees this enabled
+    public Button startGameButton;
 
     private void Awake()
     {
@@ -29,12 +29,10 @@ public class LobbyUIManager : MonoBehaviour
         ShowLocalIP();
         UpdatePlayerCount();
 
-        // Only host can start
         if (startGameButton != null)
             startGameButton.gameObject.SetActive(
                 NetworkManager.Singleton.IsHost);
 
-        // Listen for new connections
         NetworkManager.Singleton.OnClientConnectedCallback
             += OnClientConnected;
         NetworkManager.Singleton.OnClientDisconnectCallback
@@ -79,9 +77,18 @@ public class LobbyUIManager : MonoBehaviour
 
     public void UpdatePlayerCount()
     {
-        int count = NetworkManager.Singleton.ConnectedClients.Count;
-        if (playerCountText != null)
+        if (playerCountText == null) return;
+
+        // ConnectedClients is server-only; clients show a waiting message instead
+        if (NetworkManager.Singleton.IsServer)
+        {
+            int count = NetworkManager.Singleton.ConnectedClients.Count;
             playerCountText.text = $"Players: {count}/4";
+        }
+        else
+        {
+            playerCountText.text = "Waiting for host...";
+        }
     }
 
     public void OnStartGameClicked()

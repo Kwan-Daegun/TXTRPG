@@ -2,6 +2,7 @@
 using UnityEngine;
 using UnityEngine.UI;
 using TMPro;
+using Unity.Netcode;
 
 public class DungeonUIManager : MonoBehaviour
 {
@@ -29,10 +30,9 @@ public class DungeonUIManager : MonoBehaviour
     public GameObject combatPanel;
     public GameObject shopPanel;
 
-
     [Header("Combat Panel")]
-    public TextMeshProUGUI cmPartyStatsText;  // ← add this
-    public TextMeshProUGUI cmEnemyStatsText;  // ← add this
+    public TextMeshProUGUI cmPartyStatsText;
+    public TextMeshProUGUI cmEnemyStatsText;
     public Transform cmLogParent;
     public GameObject cmLogEntryPrefab;
     public Button cmAttackButton;
@@ -54,6 +54,7 @@ public class DungeonUIManager : MonoBehaviour
         }
         Instance = this;
     }
+
     private void Start()
     {
         if (cmSkillButton != null)
@@ -71,7 +72,7 @@ public class DungeonUIManager : MonoBehaviour
                 if (active != null)
                     CombatManager.Instance.PlayerUltimate(active);
             });
-        // Wire proceed button
+
         if (nextRoomButton != null)
         {
             var btn = nextRoomButton.GetComponent<Button>();
@@ -80,26 +81,21 @@ public class DungeonUIManager : MonoBehaviour
                     GameManager.Instance.GoToNextRoom());
         }
 
-        // Wire attack button
         if (cmAttackButton != null)
             cmAttackButton.onClick.AddListener(() =>
                 CombatManager.Instance.PlayerAttackAll());
 
-        // Wire potion button
         if (cmPotionButton != null)
             cmPotionButton.onClick.AddListener(() =>
                 GameManager.Instance.UsePotion());
 
-        // Wire revive potion button
         if (cmReviveButton != null)
             cmReviveButton.onClick.AddListener(() =>
                 GameManager.Instance.UseRevivePotion());
 
-        // Wire cycle character button if available
         if (cmCycleCharacterButton != null)
             cmCycleCharacterButton.onClick.AddListener(CycleCharacter);
 
-        // Refresh HUD
         RefreshHUD();
     }
 
@@ -171,8 +167,10 @@ public class DungeonUIManager : MonoBehaviour
     // ===== ACTION AREA =====
     public void ShowNextRoomButton()
     {
-        if (nextRoomButton != null)
-            nextRoomButton.SetActive(true);
+        if (nextRoomButton == null) return;
+        bool isHost = NetworkManager.Singleton == null
+            || NetworkManager.Singleton.IsHost;
+        nextRoomButton.SetActive(isHost);
     }
 
     public void HideNextRoomButton()
@@ -208,87 +206,107 @@ public class DungeonUIManager : MonoBehaviour
 
     // ===== COMBAT PANEL =====
     public void RefreshCombatPanel()
-{
-    var enemy = CombatManager.Instance.CurrentEnemy;
-    if (enemy == null) return;
-
-    if (combatTitleText != null)
-        combatTitleText.text = CombatManager.Instance.enemies.Count > 1
-            ? "Combat! vs Goblin Horde"
-            : $"Combat! vs {enemy.enemyName}";
-
-    // Enemy stats
-    if (cmEnemyStatsText != null)
     {
-        string enemyStats = "";
-        foreach (var e in CombatManager.Instance.enemies)
+        // Enemy stats — use synced data on clients, live data on host
+        if (cmEnemyStatsText != null)
         {
-            enemyStats +=
-                $"{e.enemyName}{(e.isDead ? " [DEAD]" : "")}\n" +
-                $"HP: {e.currentHP}/{e.template.baseHP}\n" +
-                $"Armor: {e.currentArmor}\n\n";
+            if (CombatManager.Instance != null &&
+                CombatManager.Instance.enemies.Count > 0)
+            {
+                if (combatTitleText != null)
+                    combatTitleText.text =
+                        CombatManager.Instance.enemies.Count > 1
+                        ? "Combat! vs Goblin Horde"
+                        : $"Combat! vs {CombatManager.Instance.enemies[0].enemyName}";
+
+                string enemyStats = "";
+                foreach (var e in CombatManager.Instance.enemies)
+                {
+                    enemyStats +=
+                        $"{e.enemyName}{(e.isDead ? " [DEAD]" : "")}\n" +
+                        $"HP: {e.currentHP}/{e.template.baseHP}\n" +
+                        $"Armor: {e.currentArmor}\n\n";
+                }
+                cmEnemyStatsText.text = enemyStats.TrimEnd('\n');
+            }
         }
-        cmEnemyStatsText.text = enemyStats.TrimEnd('\n');
+
+        // Party stats — only show this client's own characters
+        string partyStats = "";
+        var active = GetActivePartyMember();
+        var myChars = GetMyCharacters();
+
+        // If no characters owned by this client (e.g. wrong clientId),
+        // fall back to showing all for solo/offline
+        var displayList = myChars.Count > 0
+            ? myChars
+            : GameManager.Instance.party;
+
+        foreach (var member in displayList)
+        {
+            bool isActive = active != null && member == active;
+            string skillStatus = member.skillCooldownLeft > 0
+                ? $"{member.classTemplate.skillName} ({member.skillCooldownLeft})"
+                : member.classTemplate.skillName + " Ready";
+            string ultStatus = member.ultimateCooldownLeft > 0
+                ? $"{member.classTemplate.ultimateName} ({member.ultimateCooldownLeft})"
+                : member.classTemplate.ultimateName + " Ready";
+
+            if (isActive)
+            {
+                skillStatus = $"<color=#00ff00>{skillStatus}</color>";
+                ultStatus   = $"<color=#00ff00>{ultStatus}</color>";
+            }
+
+            partyStats +=
+                $"{member.playerName}" +
+                $"{(member.isDead ? " [DEAD]" : "")}\n" +
+                $"HP: {member.currentHP}/{member.classTemplate.baseHP}\n" +
+                $"Skill: {skillStatus}\n" +
+                $"Ult: {ultStatus}\n\n";
+        }
+
+        if (cmPartyStatsText != null)
+            cmPartyStatsText.text = partyStats;
     }
 
-    // Party stats with cooldowns and ability names
-    string partyStats = "";
-    var active = GetActivePartyMember();
-    foreach (var member in GameManager.Instance.party)
+    // ===== CHARACTER OWNERSHIP =====
+    private ulong GetLocalClientId()
     {
-        bool isActive = active != null && member == active;
-        string skillStatus = member.skillCooldownLeft > 0 ?
-            $"{member.classTemplate.skillName} ({member.skillCooldownLeft})" :
-            member.classTemplate.skillName + " Ready";
-        string ultStatus = member.ultimateCooldownLeft > 0 ?
-            $"{member.classTemplate.ultimateName} ({member.ultimateCooldownLeft})" :
-            member.classTemplate.ultimateName + " Ready";
-
-        if (isActive)
-        {
-            skillStatus = $"<color=#00ff00>{skillStatus}</color>";
-            ultStatus = $"<color=#00ff00>{ultStatus}</color>";
-        }
-
-        partyStats +=
-            $"{member.playerName}" +
-            $"{(member.isDead ? " [DEAD]" : "")}\n" +
-            $"HP: {member.currentHP}/{member.classTemplate.baseHP}\n" +
-            $"Skill: {skillStatus}\n" +
-            $"Ult: {ultStatus}\n\n";
-    }
-
-    if (cmPartyStatsText != null)
-        cmPartyStatsText.text = partyStats;
-}
-    private ulong GetLocalOwnerClientId()
-    {
-        if (Unity.Netcode.NetworkManager.Singleton != null &&
-            Unity.Netcode.NetworkManager.Singleton.IsClient)
-        {
-            return Unity.Netcode.NetworkManager.Singleton.LocalClientId;
-        }
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsConnectedClient)
+            return NetworkManager.Singleton.LocalClientId;
         return ulong.MaxValue;
     }
 
     public System.Collections.Generic.List<PlayerRunTimeData> GetMyCharacters()
     {
-        ulong ownerId = GetLocalOwnerClientId();
-        if (ownerId == ulong.MaxValue)
+        ulong myId = GetLocalClientId();
+
+        // Offline / solo — return all living
+        if (myId == ulong.MaxValue)
             return GameManager.Instance.party.FindAll(p => !p.isDead);
 
-        return GameManager.Instance.party.FindAll(p =>
-            p.ownerClientId == ownerId && !p.isDead);
+        var mine = GameManager.Instance.party.FindAll(
+            p => p.ownerClientId == myId && !p.isDead);
+
+        // Fallback: if ownerClientId wasn't set properly, return all living
+        if (mine.Count == 0)
+            return GameManager.Instance.party.FindAll(p => !p.isDead);
+
+        return mine;
     }
 
     public PlayerRunTimeData GetActivePartyMember()
     {
         var mine = GetMyCharacters();
         if (mine.Count == 0) return null;
-        _activeCharacterIndex %= mine.Count;
+        if (_activeCharacterIndex >= mine.Count)
+            _activeCharacterIndex = 0;
         return mine[_activeCharacterIndex];
     }
 
+    // Cycles only through THIS client's own characters
     public void CycleCharacter()
     {
         var mine = GetMyCharacters();
@@ -296,5 +314,4 @@ public class DungeonUIManager : MonoBehaviour
         _activeCharacterIndex = (_activeCharacterIndex + 1) % mine.Count;
         RefreshCombatPanel();
     }
-
 }
