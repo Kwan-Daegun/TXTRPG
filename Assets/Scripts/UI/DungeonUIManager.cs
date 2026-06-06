@@ -38,13 +38,12 @@ public class DungeonUIManager : MonoBehaviour
     public Button cmAttackButton;
     public Button cmPotionButton;
     public Button cmReviveButton;
-    public Button cmSkillButton;    // ← add
-    public Button cmUltimateButton; // ← add
-    public TextMeshProUGUI cmSkillText;    // ← button label
-    public TextMeshProUGUI cmUltimateText;
+    public Button cmSkillButton;
+    public Button cmUltimateButton;
+    public Button cmCycleCharacterButton;
 
     public TextMeshProUGUI combatTitleText;
-    private int _activePartyIndex = 0;
+    private int _activeCharacterIndex = 0;
 
     private void Awake()
     {
@@ -95,6 +94,10 @@ public class DungeonUIManager : MonoBehaviour
         if (cmReviveButton != null)
             cmReviveButton.onClick.AddListener(() =>
                 GameManager.Instance.UseRevivePotion());
+
+        // Wire cycle character button if available
+        if (cmCycleCharacterButton != null)
+            cmCycleCharacterButton.onClick.AddListener(CycleCharacter);
 
         // Refresh HUD
         RefreshHUD();
@@ -219,53 +222,62 @@ public class DungeonUIManager : MonoBehaviour
             $"HP: {enemy.currentHP}/{enemy.template.baseHP}\n" +
             $"Armor: {enemy.currentArmor}";
 
-    // Party stats with cooldowns
+    // Party stats with cooldowns and ability names
     string partyStats = "";
     foreach (var member in GameManager.Instance.party)
     {
-        string skillCD = member.skillCooldownLeft > 0 ?
-            $"({member.skillCooldownLeft})" : "Ready";
-        string ultCD = member.ultimateCooldownLeft > 0 ?
-            $"({member.ultimateCooldownLeft})" : "Ready";
+        string skillStatus = member.skillCooldownLeft > 0 ?
+            $"{member.classTemplate.skillName} ({member.skillCooldownLeft})" :
+            member.classTemplate.skillName + " Ready";
+        string ultStatus = member.ultimateCooldownLeft > 0 ?
+            $"{member.classTemplate.ultimateName} ({member.ultimateCooldownLeft})" :
+            member.classTemplate.ultimateName + " Ready";
 
         partyStats +=
             $"{member.playerName}" +
             $"{(member.isDead ? " [DEAD]" : "")}\n" +
             $"HP: {member.currentHP}/{member.classTemplate.baseHP}\n" +
-            $"Skill: {skillCD} Ult: {ultCD}\n\n";
+            $"Skill: {skillStatus}\n" +
+            $"Ult: {ultStatus}\n\n";
     }
 
     if (cmPartyStatsText != null)
         cmPartyStatsText.text = partyStats;
-
-    // Update skill/ultimate button labels
-    var active = GetActivePartyMember();
-    if (active != null)
-    {
-        if (cmSkillText != null)
-            cmSkillText.text = active.CanUseSkill() ?
-                active.classTemplate.skillName :
-                $"{active.classTemplate.skillName} " +
-                $"({active.skillCooldownLeft})";
-
-        if (cmUltimateText != null)
-            cmUltimateText.text = active.CanUseUltimate() ?
-                active.classTemplate.ultimateName :
-                $"{active.classTemplate.ultimateName} " +
-                $"({active.ultimateCooldownLeft})";
-    }
 }
+    private ulong GetLocalOwnerClientId()
+    {
+        if (Unity.Netcode.NetworkManager.Singleton != null &&
+            Unity.Netcode.NetworkManager.Singleton.IsClient)
+        {
+            return Unity.Netcode.NetworkManager.Singleton.LocalClientId;
+        }
+        return ulong.MaxValue;
+    }
+
+    public System.Collections.Generic.List<PlayerRunTimeData> GetMyCharacters()
+    {
+        ulong ownerId = GetLocalOwnerClientId();
+        if (ownerId == ulong.MaxValue)
+            return GameManager.Instance.party.FindAll(p => !p.isDead);
+
+        return GameManager.Instance.party.FindAll(p =>
+            p.ownerClientId == ownerId && !p.isDead);
+    }
+
     public PlayerRunTimeData GetActivePartyMember()
     {
-        var party = GameManager.Instance.party;
-        // Find next living member
-        for (int i = 0; i < party.Count; i++)
-        {
-            int idx = (_activePartyIndex + i) % party.Count;
-            if (!party[idx].isDead)
-                return party[idx];
-        }
-        return null;
+        var mine = GetMyCharacters();
+        if (mine.Count == 0) return null;
+        _activeCharacterIndex %= mine.Count;
+        return mine[_activeCharacterIndex];
+    }
+
+    public void CycleCharacter()
+    {
+        var mine = GetMyCharacters();
+        if (mine.Count <= 1) return;
+        _activeCharacterIndex = (_activeCharacterIndex + 1) % mine.Count;
+        RefreshCombatPanel();
     }
 
 }

@@ -12,6 +12,9 @@ public class CharSelectManager : MonoBehaviour
     private List<CharacterClass> _selectedClasses
         = new List<CharacterClass>();
 
+    private Dictionary<ulong, string> _submissions
+        = new Dictionary<ulong, string>();
+
     private void Awake()
     {
         if (Instance != null && Instance != this)
@@ -67,13 +70,13 @@ public class CharSelectManager : MonoBehaviour
 
     public void AddToParty(CharacterClass so)
     {
-        if (_selectedClasses.Count >= 4)
+        int quota = GetMyQuota();
+        if (_selectedClasses.Count >= quota)
         {
-            Debug.Log("Party is full! Max 4 characters.");
+            Debug.Log($"You can only pick {quota} character(s)!");
             return;
         }
 
-        // ← add this check
         if (_selectedClasses.Contains(so))
         {
             Debug.Log("Character already in party!");
@@ -83,6 +86,19 @@ public class CharSelectManager : MonoBehaviour
         _selectedClasses.Add(so);
         RefreshPartySlots();
         UpdateBeginButton();
+    }
+
+    private int GetMyQuota()
+    {
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsClient)
+            return 4;
+
+        int playerCount = NetworkManager.Singleton.ConnectedClients.Count;
+        if (playerCount <= 1) return 4;
+        if (playerCount == 2) return 2;
+        if (playerCount == 3)
+            return NetworkManager.Singleton.IsHost ? 2 : 1;
+        return 1;
     }
 
     public void RemoveFromParty(int index)
@@ -122,33 +138,98 @@ public class CharSelectManager : MonoBehaviour
 
 
     // CharSelectManager.cs
-public void BeginAdventure()
-{
-    if (GameManager.Instance == null) return;
-
-    GameManager.Instance.party.Clear();
-
-    for (int i = 0; i < _selectedClasses.Count; i++)
+    public void BeginAdventure()
     {
-        var data = new PlayerRunTimeData();
-        data.Initialize(
-            _selectedClasses[i],
-            _selectedClasses[i].className,
-            (ulong)i);
-        GameManager.Instance.party.Add(data);
+        if (GameManager.Instance == null) return;
+        if (_selectedClasses.Count == 0) return;
+
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsClient)
+        {
+            GameManager.Instance.party.Clear();
+            foreach (var so in _selectedClasses)
+            {
+                var data = new PlayerRunTimeData();
+                data.Initialize(so, so.className, 0);
+                GameManager.Instance.party.Add(data);
+            }
+            GameManager.Instance.StartDungeon();
+            return;
+        }
+
+        ulong localClientId = NetworkManager.Singleton.LocalClientId;
+        string classNames = string.Join(",",
+            _selectedClasses.ConvertAll(c => c.className));
+
+        SubmitSelectionServerRpc(classNames);
+
+        if (NetworkManager.Singleton.IsHost)
+        {
+            _submissions.Clear();
+            _submissions[localClientId] = classNames;
+            TryStartWhenAllSubmitted();
+        }
+        else
+        {
+            GameManager.Instance.party.Clear();
+            foreach (var so in _selectedClasses)
+            {
+                var data = new PlayerRunTimeData();
+                data.Initialize(so, so.className, localClientId);
+                GameManager.Instance.party.Add(data);
+            }
+        }
     }
 
-    // Host tells everyone to start dungeon
-    if (NetworkManager.Singleton.IsHost)
+    [ServerRpc(RequireOwnership = false)]
+    private void SubmitSelectionServerRpc(string classNames, ServerRpcParams rpcParams = default)
     {
+        ulong clientId = rpcParams.Receive.SenderClientId;
+        _submissions[clientId] = classNames;
+        TryStartWhenAllSubmitted();
+    }
+
+    private void TryStartWhenAllSubmitted()
+    {
+        if (!NetworkManager.Singleton.IsHost) return;
+
+        int expected = NetworkManager.Singleton.ConnectedClients.Count;
+        if (_submissions.Count < expected) return;
+
+        BuildPartyAndStart();
+    }
+
+    private void BuildPartyAndStart()
+    {
+        GameManager.Instance.party.Clear();
+
+        var clientIds = new List<ulong>(_submissions.Keys);
+        clientIds.Sort();
+
+        foreach (var clientId in clientIds)
+        {
+            string classNames = _submissions[clientId];
+            if (string.IsNullOrWhiteSpace(classNames)) continue;
+
+            string[] names = classNames.Split(',');
+            foreach (string className in names)
+            {
+                CharacterClass so = FindClassByName(className);
+                if (so == null) continue;
+
+                var data = new PlayerRunTimeData();
+                data.Initialize(so, so.className, clientId);
+                GameManager.Instance.party.Add(data);
+            }
+        }
+
         NetworkGameSync.Instance.ChangeGameStateServerRpc(
             GameState.EntranceHall);
     }
-    else
+
+    private CharacterClass FindClassByName(string name)
     {
-        // Client just notifies host of their choice
-        // For simplicity: everyone starts together
-        GameManager.Instance.StartDungeon();
+        foreach (var so in allClasses)
+            if (so.className == name) return so;
+        return null;
     }
-}
 }

@@ -319,35 +319,37 @@ public class CombatManager : MonoBehaviour
 
     public void PlayerAttackAll()
     {
-        if (NetworkManager.Singleton.IsServer)
+        ulong requesterId = 0;
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
+            requesterId = NetworkManager.Singleton.LocalClientId;
+
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
         {
-            RunAttackServer();
+            RunAttackServer(requesterId);
         }
         else
         {
-            RequestAttackServerRpc();
+            RequestAttackServerRpc(requesterId);
         }
     }
 
     [ServerRpc(RequireOwnership = false)]
-    private void RequestAttackServerRpc()
+    private void RequestAttackServerRpc(ulong requesterId)
     {
-        RunAttackServer();
+        RunAttackServer(requesterId);
     }
 
-    private void RunAttackServer()
+    private void RunAttackServer(ulong requesterId)
     {
         foreach (var member in GameManager.Instance.party)
         {
-            if (!member.isDead && CurrentEnemy != null
-                && !CurrentEnemy.isDead)
-            {
-                PlayerAttack(member);
-                member.TickCooldowns();
-            }
+            if (member.ownerClientId != requesterId) continue;
+            if (member.isDead || CurrentEnemy == null || CurrentEnemy.isDead) continue;
+
+            PlayerAttack(member);
+            member.TickCooldowns();
         }
 
-        // Tell all clients to refresh UI
         string enemyStats = CurrentEnemy != null
             ? $"{CurrentEnemy.enemyName}|{CurrentEnemy.currentHP}|{CurrentEnemy.currentArmor}"
             : "dead";
@@ -363,6 +365,37 @@ public class CombatManager : MonoBehaviour
     }
     public void PlayerSkill(PlayerRunTimeData attacker)
     {
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+        {
+            RunSkill(attacker.ownerClientId, attacker.classTemplate.className);
+        }
+        else if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
+        {
+            RequestSkillServerRpc(attacker.ownerClientId,
+                attacker.classTemplate.className);
+        }
+        else
+        {
+            RunSkill(attacker.ownerClientId, attacker.classTemplate.className);
+        }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void RequestSkillServerRpc(ulong ownerClientId, string className)
+    {
+        RunSkill(ownerClientId, className);
+    }
+
+    private void RunSkill(ulong ownerClientId, string className)
+    {
+        var attacker = GameManager.Instance.party.Find(p =>
+            p.ownerClientId == ownerClientId &&
+            p.classTemplate.className == className &&
+            !p.isDead);
+
+        if (attacker == null)
+            return;
+
         if (!attacker.CanUseSkill())
         {
             DungeonUIManager.Instance.LogCombat(
@@ -374,7 +407,6 @@ public class CombatManager : MonoBehaviour
         var enemy = CurrentEnemy;
         if (enemy == null || enemy.isDead) return;
 
-        string className = attacker.classTemplate.className;
         string log = "";
 
         switch (className)
@@ -467,14 +499,52 @@ public class CombatManager : MonoBehaviour
         DungeonUIManager.Instance.RefreshCombatPanel();
         DungeonUIManager.Instance.RefreshHUD();
 
-        // Enemy turn after skill
         if (!enemy.isDead) EnemyAttack(enemy);
         GameManager.Instance.CheckPartyStatus();
+
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+        {
+            string enemyStats = CurrentEnemy != null
+                ? $"{CurrentEnemy.enemyName}|{CurrentEnemy.currentHP}|{CurrentEnemy.currentArmor}"
+                : "dead";
+            SyncCombatStateClientRpc(enemyStats);
+        }
     }
 
     // ===== ULTIMATE =====
     public void PlayerUltimate(PlayerRunTimeData attacker)
     {
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+        {
+            RunUltimate(attacker.ownerClientId, attacker.classTemplate.className);
+        }
+        else if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
+        {
+            RequestUltimateServerRpc(attacker.ownerClientId,
+                attacker.classTemplate.className);
+        }
+        else
+        {
+            RunUltimate(attacker.ownerClientId, attacker.classTemplate.className);
+        }
+    }
+
+    [ServerRpc(RequireOwnership = false)]
+    private void RequestUltimateServerRpc(ulong ownerClientId, string className)
+    {
+        RunUltimate(ownerClientId, className);
+    }
+
+    private void RunUltimate(ulong ownerClientId, string className)
+    {
+        var attacker = GameManager.Instance.party.Find(p =>
+            p.ownerClientId == ownerClientId &&
+            p.classTemplate.className == className &&
+            !p.isDead);
+
+        if (attacker == null)
+            return;
+
         if (!attacker.CanUseUltimate())
         {
             DungeonUIManager.Instance.LogCombat(
@@ -486,7 +556,6 @@ public class CombatManager : MonoBehaviour
         var enemy = CurrentEnemy;
         if (enemy == null || enemy.isDead) return;
 
-        string className = attacker.classTemplate.className;
         string log = "";
 
         switch (className)
@@ -579,9 +648,16 @@ public class CombatManager : MonoBehaviour
         DungeonUIManager.Instance.RefreshCombatPanel();
         DungeonUIManager.Instance.RefreshHUD();
 
-        // Enemy turn after ultimate
         if (!enemy.isDead) EnemyAttack(enemy);
         GameManager.Instance.CheckPartyStatus();
+
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+        {
+            string enemyStats = CurrentEnemy != null
+                ? $"{CurrentEnemy.enemyName}|{CurrentEnemy.currentHP}|{CurrentEnemy.currentArmor}"
+                : "dead";
+            SyncCombatStateClientRpc(enemyStats);
+        }
     }
 
 

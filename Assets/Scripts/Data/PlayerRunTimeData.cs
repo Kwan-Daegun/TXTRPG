@@ -35,6 +35,8 @@ public class PlayerRunTimeData
         currentArmor = template.baseArmor;
         isDead = false;
         ownerClientId = clientId;
+        skillCooldownLeft = 0;
+        ultimateCooldownLeft = 0;
     }
 
     // Combat helpers
