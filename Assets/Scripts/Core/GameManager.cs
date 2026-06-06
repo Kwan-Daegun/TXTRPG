@@ -2,6 +2,7 @@
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
+using Unity.Netcode;
 
 public class GameManager : MonoBehaviour
 {
@@ -108,6 +109,32 @@ public class GameManager : MonoBehaviour
         GoToNextRoom();
     }
 
+    public void ResetRunState()
+    {
+        party.Clear();
+        currentRoomIndex = -1;
+    }
+
+    public void ReturnToLobby()
+    {
+        ResetRunState();
+        ChangeState(GameState.Lobby);
+    }
+
+    public void BackToMenu()
+    {
+        ResetRunState();
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsListening)
+        {
+            if (NetworkBootstrapper.Instance != null)
+            {
+                NetworkBootstrapper.Instance.Disconnect();
+                return;
+            }
+        }
+        ChangeState(GameState.Title);
+    }
 
     public bool IsPartyAlive()
     {

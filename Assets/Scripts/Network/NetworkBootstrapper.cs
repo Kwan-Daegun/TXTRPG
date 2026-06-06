@@ -76,13 +76,22 @@ public class NetworkBootstrapper : MonoBehaviour
     private void OnClientDisconnected(ulong clientId)
     {
         Debug.Log($"[NETWORK] Client disconnected: {clientId}");
+
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsClient &&
+            !NetworkManager.Singleton.IsHost)
+        {
+            if (GameManager.Instance != null)
+                GameManager.Instance.ChangeState(GameState.Title);
+        }
     }
 
-    // disconnets the client and return him to the titel screen
+    // disconnects the network session and return to the title screen
     public void Disconnect()
     {
         NetworkManager.Singleton.Shutdown();
-        GameManager.Instance.ChangeState(GameState.Lobby);
+        if (GameManager.Instance != null)
+            GameManager.Instance.ChangeState(GameState.Title);
     }
     public string GetLocalIP()
     {

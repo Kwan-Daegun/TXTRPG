@@ -151,9 +151,8 @@ public class CombatManager : MonoBehaviour
             HandleEnemyDeath(enemy);
         }
 
-
-        if (!enemy.isDead)
-            EnemyAttack(enemy);
+        if (!IsCombatOver())
+            EnemyTurnPhase();
 
         GameManager.Instance.CheckPartyStatus();
     }
@@ -499,7 +498,7 @@ public class CombatManager : MonoBehaviour
         DungeonUIManager.Instance.RefreshCombatPanel();
         DungeonUIManager.Instance.RefreshHUD();
 
-        if (!enemy.isDead) EnemyAttack(enemy);
+        if (!IsCombatOver()) EnemyTurnPhase();
         GameManager.Instance.CheckPartyStatus();
 
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
@@ -512,6 +511,7 @@ public class CombatManager : MonoBehaviour
     }
 
     // ===== ULTIMATE =====
+
     public void PlayerUltimate(PlayerRunTimeData attacker)
     {
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
@@ -648,7 +648,7 @@ public class CombatManager : MonoBehaviour
         DungeonUIManager.Instance.RefreshCombatPanel();
         DungeonUIManager.Instance.RefreshHUD();
 
-        if (!enemy.isDead) EnemyAttack(enemy);
+        if (!IsCombatOver()) EnemyTurnPhase();
         GameManager.Instance.CheckPartyStatus();
 
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
@@ -660,5 +660,101 @@ public class CombatManager : MonoBehaviour
         }
     }
 
+    private void EnemyTurnPhase()
+    {
+        if (IsCombatOver()) return;
 
+        var livingEnemies = enemies.FindAll(e => !e.isDead);
+        foreach (var enemy in livingEnemies)
+        {
+            if (!GameManager.Instance.IsPartyAlive())
+                break;
+
+            if (enemy.isFrozen)
+            {
+                enemy.isFrozen = false;
+                DungeonUIManager.Instance.LogCombat(
+                    $"{enemy.enemyName} is frozen and cannot act!");
+                continue;
+            }
+
+            if (enemy.isVined)
+            {
+                enemy.isVined = false;
+                DungeonUIManager.Instance.LogCombat(
+                    $"{enemy.enemyName} is entangled and cannot act!");
+                continue;
+            }
+
+            var livingParty = GameManager.Instance.party.FindAll(p => !p.isDead);
+            if (livingParty.Count == 0) break;
+
+            var target = livingParty[Random.Range(0, livingParty.Count)];
+            bool isSpecial = enemy.IsSpecial();
+            int rawDamage = isSpecial ? enemy.RollSpecialAttack() : enemy.RollAttack();
+            if (isSpecial && enemy.template.minSpecialAtk == 0)
+                rawDamage = enemy.RollAttack() * 2;
+
+            CombatResult result = new CombatResult
+            {
+                attackerName = enemy.enemyName,
+                defenderName = target.playerName
+            };
+
+            if (isSpecial)
+            {
+                target.TakeDamage(rawDamage);
+                result.eventType = CombatEventType.Special;
+                result.damage = rawDamage;
+                result.message = $"{enemy.enemyName} uses SPECIAL ATTACK on " +
+                                 $"{target.playerName} for {rawDamage} damage!";
+            }
+            else if (target.IsDodge())
+            {
+                result.eventType = CombatEventType.Dodge;
+                result.damage = 0;
+                result.message = $"{target.playerName} dodged {enemy.enemyName}'s attack!";
+            }
+            else if (target.IsBlock())
+            {
+                int blocked = rawDamage / 2;
+                target.TakeDamage(blocked);
+                result.eventType = CombatEventType.Block;
+                result.damage = blocked;
+                result.message = $"{target.playerName} blocked! Only {blocked} damage taken.";
+            }
+            else
+            {
+                target.TakeDamage(rawDamage);
+                result.eventType = CombatEventType.Hit;
+                result.damage = rawDamage;
+                result.message = $"{enemy.enemyName} hits {target.playerName} " +
+                                 $"for {rawDamage} damage!";
+
+                if (target.IsCounter())
+                {
+                    enemy.TakeDamage(rawDamage);
+                    var counter = new CombatResult
+                    {
+                        eventType = CombatEventType.Counter,
+                        attackerName = target.playerName,
+                        defenderName = enemy.enemyName,
+                        damage = rawDamage,
+                        message = $"{target.playerName} COUNTERS for {rawDamage} damage!"
+                    };
+                    LogResult(counter);
+                }
+            }
+
+            LogResult(result);
+        }
+
+        if (GameManager.Instance.IsPartyAlive() && NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+        {
+            string enemyStats = CurrentEnemy != null
+                ? $"{CurrentEnemy.enemyName}|{CurrentEnemy.currentHP}|{CurrentEnemy.currentArmor}"
+                : "dead";
+            SyncCombatStateClientRpc(enemyStats);
+        }
+    }
 }

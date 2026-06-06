@@ -1,5 +1,6 @@
 using UnityEngine;
 using TMPro;
+using Unity.Netcode;
 public class VictoryUIManager : MonoBehaviour
 {
      public static VictoryUIManager Instance { get; private set; }
@@ -32,5 +33,23 @@ public class VictoryUIManager : MonoBehaviour
                         $"({member.classTemplate.className})\n";
         stats += $"\nTotal Gold: {GameManager.Instance.gold}";
         statsText.text = stats;
+    }
+
+    public void OnPlayAgainClicked()
+    {
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsHost)
+        {
+            NetworkGameSync.Instance.ChangeGameStateServerRpc(
+                GameState.Lobby);
+            return;
+        }
+
+        GameManager.Instance.ReturnToLobby();
+    }
+
+    public void OnBackToMenuClicked()
+    {
+        GameManager.Instance.BackToMenu();
     }
 }

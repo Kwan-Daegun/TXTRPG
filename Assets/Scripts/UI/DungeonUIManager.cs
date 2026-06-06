@@ -213,25 +213,42 @@ public class DungeonUIManager : MonoBehaviour
     if (enemy == null) return;
 
     if (combatTitleText != null)
-        combatTitleText.text = $"Combat! vs {enemy.enemyName}";
+        combatTitleText.text = CombatManager.Instance.enemies.Count > 1
+            ? "Combat! vs Goblin Horde"
+            : $"Combat! vs {enemy.enemyName}";
 
     // Enemy stats
     if (cmEnemyStatsText != null)
-        cmEnemyStatsText.text =
-            $"{enemy.enemyName}\n" +
-            $"HP: {enemy.currentHP}/{enemy.template.baseHP}\n" +
-            $"Armor: {enemy.currentArmor}";
+    {
+        string enemyStats = "";
+        foreach (var e in CombatManager.Instance.enemies)
+        {
+            enemyStats +=
+                $"{e.enemyName}{(e.isDead ? " [DEAD]" : "")}\n" +
+                $"HP: {e.currentHP}/{e.template.baseHP}\n" +
+                $"Armor: {e.currentArmor}\n\n";
+        }
+        cmEnemyStatsText.text = enemyStats.TrimEnd('\n');
+    }
 
     // Party stats with cooldowns and ability names
     string partyStats = "";
+    var active = GetActivePartyMember();
     foreach (var member in GameManager.Instance.party)
     {
+        bool isActive = active != null && member == active;
         string skillStatus = member.skillCooldownLeft > 0 ?
             $"{member.classTemplate.skillName} ({member.skillCooldownLeft})" :
             member.classTemplate.skillName + " Ready";
         string ultStatus = member.ultimateCooldownLeft > 0 ?
             $"{member.classTemplate.ultimateName} ({member.ultimateCooldownLeft})" :
             member.classTemplate.ultimateName + " Ready";
+
+        if (isActive)
+        {
+            skillStatus = $"<color=#00ff00>{skillStatus}</color>";
+            ultStatus = $"<color=#00ff00>{ultStatus}</color>";
+        }
 
         partyStats +=
             $"{member.playerName}" +
