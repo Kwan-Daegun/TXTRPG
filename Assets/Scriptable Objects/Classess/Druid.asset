@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   className: Druid
   weaponName: ' Sickle'
-  classIcon: {fileID: 4743971200383838015, guid: b6785679c35f52e4aaeca3463a084766, type: 3}
+  classIcon: {fileID: 21300000, guid: 5359111d8efea4c4a950da5bad59d8ba, type: 3}
   baseHP: 75
   baseArmor: 15
   minAttack: 15

@@ -1,10 +1,10 @@
 fileFormatVersion: 2
-guid: b6785679c35f52e4aaeca3463a084766
+guid: d8c29144063771b44a2e7e49670a2590
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 4743971200383838015
-    second: Screenshot 2026-01-02 202151_0
+      213: 2759625832949664974
+    second: Thief_0
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +37,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -75,7 +75,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -113,13 +113,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Screenshot 2026-01-02 202151_0
+      name: Thief_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 1919
-        height: 1199
+        x: 48
+        y: 47
+        width: 430
+        height: 421
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +128,8 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: f37ef8f0ca8f5d140800000000000000
-      internalID: 4743971200383838015
+      spriteID: eccc4fde2192c4620800000000000000
+      internalID: 2759625832949664974
       vertices: []
       indices: 
       edges: []
@@ -148,7 +148,7 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Screenshot 2026-01-02 202151_0: 4743971200383838015
+      Thief_0: 2759625832949664974
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

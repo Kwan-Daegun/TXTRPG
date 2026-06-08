@@ -1,4 +1,3 @@
-// GameManager.cs
 using UnityEngine;
 using UnityEngine.SceneManagement;
 using System.Collections.Generic;
@@ -17,7 +16,6 @@ public class GameManager : MonoBehaviour
     [Header("Inventory")]
     public int gold = 0;
     public int potions = 0;
-
     public int revivePotions = 0;
 
     public void AddRevivePotion() => revivePotions++;
@@ -36,7 +34,6 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
-        // Singleton
         if (Instance != null && Instance != this)
         {
             Destroy(gameObject);
@@ -45,8 +42,7 @@ public class GameManager : MonoBehaviour
         Instance = this;
         DontDestroyOnLoad(gameObject);
     }
-
-    //state management shit
+   
     public void ChangeState(GameState newState)
     {
         currentState = newState;
@@ -57,32 +53,28 @@ public class GameManager : MonoBehaviour
     {
         switch (state)
         {
-            case GameState.Title:
-                LoadScene("TitleScene");
-                break;
-            case GameState.Lobby:
-                LoadScene("LobbyScene");
-                break;
-            case GameState.CharacterSelect:
-                LoadScene("CharSelectScene");
-                break;
+            case GameState.Title: LoadScene("TitleScene"); break;
+            case GameState.Lobby: LoadScene("LobbyScene"); break;
+            case GameState.CharacterSelect: LoadScene("CharSelectScene"); break;
             case GameState.EntranceHall:
             case GameState.TrapRoom:
             case GameState.TreasureChamber:
             case GameState.GoblinBarracks:
             case GameState.Shop:
-            case GameState.WarchiefThrone:
-                LoadScene("DungeonScene");
-                break;
-            case GameState.GameOver:
-                LoadScene("GameOverScene");
-                break;
-            case GameState.Victory:
-                LoadScene("VictoryScene");
-                break;
+            case GameState.WarchiefThrone: LoadScene("DungeonScene"); break;
+            case GameState.GameOver: LoadScene("GameOverScene"); break;
+            case GameState.Victory: LoadScene("VictoryScene"); break;
         }
     }
 
+    // Centralized network-aware state change — always use this for game flow
+    public void ChangeStateNetworked(GameState newState)
+    {
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+            NetworkGameSync.Instance.ChangeGameStateServerRpc(newState);
+        else if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsConnectedClient)
+            ChangeState(newState); // offline/solo
+    }
 
     public void GoToNextRoom()
     {
@@ -93,13 +85,13 @@ public class GameManager : MonoBehaviour
 
         switch (currentRoomIndex)
         {
-            case 0: ChangeState(GameState.EntranceHall); break;
-            case 1: ChangeState(GameState.TrapRoom); break;
-            case 2: ChangeState(GameState.TreasureChamber); break;
-            case 3: ChangeState(GameState.GoblinBarracks); break;
-            case 4: ChangeState(GameState.Shop); break;
-            case 5: ChangeState(GameState.WarchiefThrone); break;
-            default: ChangeState(GameState.Victory); break;
+            case 0: ChangeStateNetworked(GameState.EntranceHall); break;
+            case 1: ChangeStateNetworked(GameState.TrapRoom); break;
+            case 2: ChangeStateNetworked(GameState.TreasureChamber); break;
+            case 3: ChangeStateNetworked(GameState.GoblinBarracks); break;
+            case 4: ChangeStateNetworked(GameState.Shop); break;
+            case 5: ChangeStateNetworked(GameState.WarchiefThrone); break;
+            default: ChangeStateNetworked(GameState.Victory); break;
         }
     }
 
@@ -118,14 +110,13 @@ public class GameManager : MonoBehaviour
     public void ReturnToLobby()
     {
         ResetRunState();
-        ChangeState(GameState.Lobby);
+        ChangeStateNetworked(GameState.Lobby);
     }
 
     public void BackToMenu()
     {
         ResetRunState();
-        if (NetworkManager.Singleton != null &&
-            NetworkManager.Singleton.IsListening)
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsListening)
         {
             if (NetworkBootstrapper.Instance != null)
             {
@@ -139,35 +130,42 @@ public class GameManager : MonoBehaviour
     public bool IsPartyAlive()
     {
         foreach (var member in party)
-        {
             if (!member.isDead) return true;
-        }
         return false;
     }
 
     public void CheckPartyStatus()
     {
         if (!IsPartyAlive())
-            ChangeState(GameState.GameOver);
+            ChangeStateNetworked(GameState.GameOver);
     }
 
-    //inventry
     public void AddGold(int amount) => gold += amount;
     public void AddPotion() => potions++;
+
+    // ===== POTION =====
+    public void TryUsePotion()
+    {
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient
+            && !NetworkManager.Singleton.IsServer)
+            NetworkGameSync.Instance.UsePotionServerRpc();
+        else
+        {
+            UsePotion();
+            SyncPartyAfterItem();
+        }
+    }
 
     public bool UsePotion()
     {
         if (potions <= 0)
         {
-            DungeonUIManager.Instance?.ShowNarrative(
-                "No potions left!");
+            DungeonUIManager.Instance?.ShowNarrative("No potions left!");
             return false;
         }
 
-        // Heal lowest HP living member
         PlayerRunTimeData target = null;
         int lowestHP = int.MaxValue;
-
         foreach (var member in party)
         {
             if (!member.isDead && member.currentHP < lowestHP)
@@ -179,29 +177,79 @@ public class GameManager : MonoBehaviour
 
         if (target == null) return false;
 
-        int healAmount = 30;
         target.currentHP = Mathf.Min(
             target.classTemplate.baseHP,
-            target.currentHP + healAmount
-        );
+            target.currentHP + 30);
         potions--;
+
         DungeonUIManager.Instance?.RefreshHUD();
         DungeonUIManager.Instance?.ShowNarrative(
             $"Used a potion! {target.playerName} restored 30 HP.");
         return true;
-
     }
-    public void TryUsePotion()
+
+    // ===== REVIVE POTION =====
+    public void TryUseRevivePotion()
     {
-        UsePotion();
+        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient
+            && !NetworkManager.Singleton.IsServer)
+            NetworkGameSync.Instance.UseRevivePotionServerRpc();
+        else
+        {
+            UseRevivePotion();
+            SyncPartyAfterItem();
+        }
     }
 
+    public bool UseRevivePotion()
+    {
+        if (revivePotions <= 0)
+        {
+            DungeonUIManager.Instance?.ShowNarrative("No revive potions left!");
+            return false;
+        }
+
+        PlayerRunTimeData target = null;
+        foreach (var member in party)
+        {
+            if (member.isDead) { target = member; break; }
+        }
+
+        if (target == null)
+        {
+            DungeonUIManager.Instance?.ShowNarrative("No fallen ally to revive!");
+            return false;
+        }
+
+        target.isDead = false;
+        target.currentHP = target.classTemplate.baseHP / 2;
+        revivePotions--;
+
+        DungeonUIManager.Instance?.ShowNarrative(
+            $"{target.playerName} has been revived with {target.currentHP} HP!");
+        DungeonUIManager.Instance?.RefreshHUD();
+        return true;
+    }
+
+    public void SyncPartyAfterItem()
+    {
+        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer)
+            return;
+
+        var parts = new List<string>();
+        foreach (var m in party)
+            parts.Add(
+                $"{m.playerName}:{m.currentHP}:{m.currentArmor}:{(m.isDead ? 1 : 0)}");
+        string payload = string.Join("|", parts);
+
+        NetworkGameSync.Instance.SyncPartyHPClientRpc(payload);
+        NetworkGameSync.Instance.SyncInventoryClientRpc(potions, revivePotions, gold);
+    }
 
     private void LoadScene(string sceneName)
     {
         SceneManager.LoadScene(sceneName);
     }
-
 
     public void Restart()
     {
@@ -211,33 +259,4 @@ public class GameManager : MonoBehaviour
         currentRoomIndex = -1;
         ChangeState(GameState.Title);
     }
-    public bool UseRevivePotion()
-    {
-        if (revivePotions <= 0) return false;
-
-        // Find first dead member
-        PlayerRunTimeData target = null;
-        foreach (var member in GameManager.Instance.party)
-        {
-            if (member.isDead)
-            {
-                target = member;
-                break;
-            }
-        }
-
-        if (target == null) return false;
-
-        // Revive with 50% HP
-        target.isDead = false;
-        target.currentHP = target.classTemplate.baseHP / 2;
-        revivePotions--;
-
-        DungeonUIManager.Instance?.ShowNarrative(
-            $"{target.playerName} has been revived with " +
-            $"{target.currentHP} HP!");
-        DungeonUIManager.Instance?.RefreshHUD();
-        return true;
-    }
-    
 }

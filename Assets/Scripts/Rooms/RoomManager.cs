@@ -1,4 +1,3 @@
-using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Unity.Netcode;
@@ -27,7 +26,6 @@ public class RoomManager : MonoBehaviour
 
     private void Start()
     {
-        // Only the host drives room logic
         if (NetworkManager.Singleton == null || NetworkManager.Singleton.IsHost)
             HandleCurrentRoom();
     }
@@ -36,12 +34,12 @@ public class RoomManager : MonoBehaviour
     {
         switch (GameManager.Instance.currentState)
         {
-            case GameState.EntranceHall:    HandleEntranceHall();    break;
-            case GameState.TrapRoom:        HandleTrapRoom();        break;
+            case GameState.EntranceHall: HandleEntranceHall(); break;
+            case GameState.TrapRoom: HandleTrapRoom(); break;
             case GameState.TreasureChamber: HandleTreasureChamber(); break;
-            case GameState.GoblinBarracks:  HandleGoblinBarracks();  break;
-            case GameState.Shop:            HandleShop();            break;
-            case GameState.WarchiefThrone:  HandleWarchiefThrone();  break;
+            case GameState.GoblinBarracks: HandleGoblinBarracks(); break;
+            case GameState.Shop: HandleShop(); break;
+            case GameState.WarchiefThrone: HandleWarchiefThrone(); break;
         }
     }
 
@@ -55,14 +53,13 @@ public class RoomManager : MonoBehaviour
         DungeonUIManager.Instance.SetRoomTitle("Entrance Hall", "Room 1 of 6");
         DungeonUIManager.Instance.ShowNextRoomButton();
 
-        // Tell clients: show entrance hall narrative, no combat
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
             NetworkGameSync.Instance.SyncRoomClientRpc(
                 "Entrance Hall", "Room 1 of 6",
                 "You stand at the entrance of the War Goblin's Lair.\n" +
                 "The stench of goblins fills the air.\n" +
                 "Prepare yourselves, adventurers!",
-                false);
+                false, "");
     }
 
     private void HandleTrapRoom()
@@ -78,7 +75,7 @@ public class RoomManager : MonoBehaviour
                 "Trap Room", "Room 2 of 6",
                 "You hear a faint clicking sound...\n" +
                 "Pressure plates are hidden beneath the stones!",
-                false);
+                false, "");
 
         foreach (var member in GameManager.Instance.party)
         {
@@ -126,7 +123,6 @@ public class RoomManager : MonoBehaviour
         GameManager.Instance.CheckPartyStatus();
         DungeonUIManager.Instance.RefreshHUD();
 
-        // Sync final HP to clients
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
             NetworkGameSync.Instance.SyncPartyHPClientRpc(BuildPartyHPPayload());
 
@@ -142,16 +138,16 @@ public class RoomManager : MonoBehaviour
             "But a Guardian Golem blocks your path!"
         );
 
+        var enemySOs = new List<EnemyClass> { kingGolemSO };
+        CombatManager.Instance.StartCombat(enemySOs);
+        DungeonUIManager.Instance.ShowCombatPanel();
+
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
             NetworkGameSync.Instance.SyncRoomClientRpc(
                 "Treasure Chamber", "Room 3 of 6",
                 "A massive pile of gold and gems lies ahead.\n" +
                 "But a Guardian Golem blocks your path!",
-                true);
-
-        var enemies = new List<EnemyClass> { kingGolemSO };
-        CombatManager.Instance.StartCombat(enemies);
-        DungeonUIManager.Instance.ShowCombatPanel();
+                true, BuildEnemyRosterPayload(enemySOs));
     }
 
     public void OnTreasureChamberCombatEnd()
@@ -197,19 +193,20 @@ public class RoomManager : MonoBehaviour
         );
         DungeonUIManager.Instance.HideNextRoomButton();
 
+        int goblinCount = Random.Range(4, 7);
+        var enemySOs = new List<EnemyClass>();
+        for (int i = 0; i < goblinCount; i++)
+            enemySOs.Add(goblinMinionSO);
+
+        CombatManager.Instance.StartCombat(enemySOs);
+        DungeonUIManager.Instance.ShowCombatPanel();
+
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
             NetworkGameSync.Instance.SyncRoomClientRpc(
                 "Goblin Barracks", "Room 4 of 6",
                 "A horde of goblins lies in wait!\n" +
                 "Armed with crude weapons, they charge!",
-                true);
-
-        int goblinCount = Random.Range(4, 7);
-        var enemies = new List<EnemyClass>();
-        for (int i = 0; i < goblinCount; i++)
-            enemies.Add(goblinMinionSO);
-        CombatManager.Instance.StartCombat(enemies);
-        DungeonUIManager.Instance.ShowCombatPanel();
+                true, BuildEnemyRosterPayload(enemySOs));
     }
 
     private void HandleShop()
@@ -225,7 +222,7 @@ public class RoomManager : MonoBehaviour
                 "Goblin Shop", "Room 5 of 6",
                 "A shady goblin merchant eyes you suspiciously.\n" +
                 "\"Buy something or get out!\"",
-                false);
+                false, "");
 
         DungeonUIManager.Instance.ShowShopPanel();
     }
@@ -278,7 +275,8 @@ public class RoomManager : MonoBehaviour
     {
         if (GameManager.Instance.revivePotions >= 3)
         {
-            DungeonUIManager.Instance.LogShop("Can't carry more than 3 revive potions!");
+            DungeonUIManager.Instance.LogShop(
+                "Can't carry more than 3 revive potions!");
             return;
         }
         if (GameManager.Instance.gold < 50)
@@ -303,17 +301,17 @@ public class RoomManager : MonoBehaviour
         );
         DungeonUIManager.Instance.HideNextRoomButton();
 
+        var enemySOs = new List<EnemyClass> { goblinWarchiefSO };
+        CombatManager.Instance.StartCombat(enemySOs);
+        DungeonUIManager.Instance.ShowCombatPanel();
+
         if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
             NetworkGameSync.Instance.SyncRoomClientRpc(
                 "Warchief's Throne", "Room 6 of 6 - BOSS",
                 "The Goblin Warchief rises from his throne!\n" +
                 "\"You dare challenge ME?!\"\n" +
                 "The final battle begins!",
-                true);
-
-        var enemies = new List<EnemyClass> { goblinWarchiefSO };
-        CombatManager.Instance.StartCombat(enemies);
-        DungeonUIManager.Instance.ShowCombatPanel();
+                true, BuildEnemyRosterPayload(enemySOs));
     }
 
     public void OnCombatEnded()
@@ -333,17 +331,25 @@ public class RoomManager : MonoBehaviour
             case GameState.WarchiefThrone:
                 DungeonUIManager.Instance.ShowNarrative(
                     "The Goblin Warchief has been defeated!\nVICTORY!");
-                GameManager.Instance.ChangeState(GameState.Victory);
+                // Use networked state so all clients go to Victory
+                GameManager.Instance.ChangeStateNetworked(GameState.Victory);
                 break;
         }
     }
-
-    // Builds a pipe-separated payload of all party members' HP for syncing
     private string BuildPartyHPPayload()
     {
         var parts = new List<string>();
         foreach (var m in GameManager.Instance.party)
-            parts.Add($"{m.playerName}:{m.currentHP}:{m.currentArmor}:{(m.isDead ? 1 : 0)}");
+            parts.Add(
+                $"{m.playerName}:{m.currentHP}:{m.currentArmor}:{(m.isDead ? 1 : 0)}");
+        return string.Join("|", parts);
+    }
+
+    private string BuildEnemyRosterPayload(List<EnemyClass> enemySOs)
+    {
+        var parts = new List<string>();
+        foreach (var so in enemySOs)
+            parts.Add(so.EnemyName);
         return string.Join("|", parts);
     }
 }

@@ -8,7 +8,7 @@ public class NetworkBootstrapper : MonoBehaviour
     public static NetworkBootstrapper Instance { get; private set; }
 
     [Header("Network Settings")]
-    public string ipAddress = "192.168.100.1";
+    public string ipAddress = "";
     public ushort port = 7777;
 
     private void Awake()
@@ -22,34 +22,67 @@ public class NetworkBootstrapper : MonoBehaviour
         DontDestroyOnLoad(gameObject);
     }
 
-
     public void StartHost()
     {
-        SetTransport();
-        NetworkManager.Singleton.StartHost();
-        Debug.Log($"[HOST] Started on port {port}");
-        GameManager.Instance.ChangeState(GameState.Lobby);
+        StartCoroutine(StartHostRoutine());
     }
 
-    // client joins the game using teh hot ip addrews
     public void StartClient(string ip)
     {
+        StartCoroutine(StartClientRoutine(ip));
+    }
+
+    private System.Collections.IEnumerator StartHostRoutine()
+    {
+        if (NetworkManager.Singleton.IsListening)
+        {
+            NetworkManager.Singleton.Shutdown();
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        // Host always binds to 0.0.0.0 to accept all interfaces
+        var transport = NetworkManager.Singleton
+            .GetComponent<UnityTransport>();
+        transport.SetConnectionData("0.0.0.0", port);
+
+        bool success = NetworkManager.Singleton.StartHost();
+
+        if (success)
+        {
+            Debug.Log($"[HOST] Started on port {port}");
+            GameManager.Instance.ChangeState(GameState.Lobby);
+        }
+        else
+        {
+            Debug.LogError("[HOST] Failed to start.");
+        }
+    }
+
+    private System.Collections.IEnumerator StartClientRoutine(string ip)
+    {
+        if (NetworkManager.Singleton.IsListening)
+        {
+            NetworkManager.Singleton.Shutdown();
+            yield return new WaitForSeconds(0.5f);
+        }
+
+        if (string.IsNullOrEmpty(ip))
+        {
+            Debug.LogError("[CLIENT] No host IP provided. Enter the host's hotspot IP.");
+            yield break;
+        }
+
         ipAddress = ip;
-        SetTransport();
+
+        // Client connects to the host's hotspot IP
+        var transport = NetworkManager.Singleton
+            .GetComponent<UnityTransport>();
+        transport.SetConnectionData(ip, port);
+
         NetworkManager.Singleton.StartClient();
         Debug.Log($"[CLIENT] Connecting to {ip}:{port}");
     }
 
-    //transport set up
-    private void SetTransport()
-    {
-        var transport = NetworkManager.Singleton
-            .GetComponent<UnityTransport>();
-
-        transport.SetConnectionData(ipAddress, port);
-    }
-
-    // callbacks for client connections and disconnections mostly for debug purposes
     private void OnEnable()
     {
         if (NetworkManager.Singleton == null) return;
@@ -86,24 +119,53 @@ public class NetworkBootstrapper : MonoBehaviour
         }
     }
 
-    // disconnects the network session and return to the title screen
     public void Disconnect()
     {
         NetworkManager.Singleton.Shutdown();
         if (GameManager.Instance != null)
             GameManager.Instance.ChangeState(GameState.Title);
     }
+
     public string GetLocalIP()
     {
-        var host = System.Net.Dns.GetHostEntry(
-            System.Net.Dns.GetHostName());
-
-        foreach (var ip in host.AddressList)
+        foreach (var netInterface in
+            System.Net.NetworkInformation.NetworkInterface
+                .GetAllNetworkInterfaces())
         {
-            if (ip.AddressFamily ==
-                System.Net.Sockets.AddressFamily.InterNetwork)
-                return ip.ToString();
+            if (netInterface.OperationalStatus !=
+                System.Net.NetworkInformation.OperationalStatus.Up)
+                continue;
+
+            foreach (var addr in netInterface
+                .GetIPProperties().UnicastAddresses)
+            {
+                if (addr.Address.AddressFamily !=
+                    System.Net.Sockets.AddressFamily.InterNetwork)
+                    continue;
+
+                string ip = addr.Address.ToString();
+
+                if (ip.StartsWith("192.168.43.") ||
+                    ip.StartsWith("172.20.10.")   ||
+                    ip.StartsWith("192.168.")     ||
+                    ip.StartsWith("10."))
+                    return ip;
+            }
         }
         return "127.0.0.1";
+    }
+
+    private void OnApplicationQuit()
+    {
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsListening)
+            NetworkManager.Singleton.Shutdown();
+    }
+
+    private void OnDestroy()
+    {
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsListening)
+            NetworkManager.Singleton.Shutdown();
     }
 }

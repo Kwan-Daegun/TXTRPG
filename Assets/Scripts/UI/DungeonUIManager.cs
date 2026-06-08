@@ -87,16 +87,24 @@ public class DungeonUIManager : MonoBehaviour
 
         if (cmPotionButton != null)
             cmPotionButton.onClick.AddListener(() =>
-                GameManager.Instance.UsePotion());
+                GameManager.Instance.TryUsePotion());
 
         if (cmReviveButton != null)
             cmReviveButton.onClick.AddListener(() =>
-                GameManager.Instance.UseRevivePotion());
+                GameManager.Instance.TryUseRevivePotion());
 
         if (cmCycleCharacterButton != null)
             cmCycleCharacterButton.onClick.AddListener(CycleCharacter);
 
         RefreshHUD();
+
+        // Client requests current room state from host once scene is loaded
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsClient &&
+            !NetworkManager.Singleton.IsHost)
+        {
+            NetworkGameSync.Instance.RequestRoomSyncServerRpc();
+        }
     }
 
     // ===== ROOM =====
@@ -207,7 +215,6 @@ public class DungeonUIManager : MonoBehaviour
     // ===== COMBAT PANEL =====
     public void RefreshCombatPanel()
     {
-        // Enemy stats — use synced data on clients, live data on host
         if (cmEnemyStatsText != null)
         {
             if (CombatManager.Instance != null &&
@@ -231,13 +238,10 @@ public class DungeonUIManager : MonoBehaviour
             }
         }
 
-        // Party stats — only show this client's own characters
         string partyStats = "";
         var active = GetActivePartyMember();
         var myChars = GetMyCharacters();
 
-        // If no characters owned by this client (e.g. wrong clientId),
-        // fall back to showing all for solo/offline
         var displayList = myChars.Count > 0
             ? myChars
             : GameManager.Instance.party;
@@ -283,14 +287,12 @@ public class DungeonUIManager : MonoBehaviour
     {
         ulong myId = GetLocalClientId();
 
-        // Offline / solo — return all living
         if (myId == ulong.MaxValue)
             return GameManager.Instance.party.FindAll(p => !p.isDead);
 
         var mine = GameManager.Instance.party.FindAll(
             p => p.ownerClientId == myId && !p.isDead);
 
-        // Fallback: if ownerClientId wasn't set properly, return all living
         if (mine.Count == 0)
             return GameManager.Instance.party.FindAll(p => !p.isDead);
 
@@ -306,7 +308,6 @@ public class DungeonUIManager : MonoBehaviour
         return mine[_activeCharacterIndex];
     }
 
-    // Cycles only through THIS client's own characters
     public void CycleCharacter()
     {
         var mine = GetMyCharacters();

@@ -1,10 +1,19 @@
 fileFormatVersion: 2
-guid: b6785679c35f52e4aaeca3463a084766
+guid: 164ebaeac0532934da73769800bac28a
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 4743971200383838015
-    second: Screenshot 2026-01-02 202151_0
+      213: -7285376162372006033
+    second: Mage_0
+  - first:
+      213: 1377322663251520538
+    second: Mage_1
+  - first:
+      213: 2429379624658069490
+    second: Mage_2
+  - first:
+      213: -3092618186771702557
+    second: Mage_3
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +46,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -75,7 +84,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -113,13 +122,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Screenshot 2026-01-02 202151_0
+      name: Mage_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 1919
-        height: 1199
+        x: 79
+        y: 29
+        width: 385
+        height: 429
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +137,74 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: f37ef8f0ca8f5d140800000000000000
-      internalID: 4743971200383838015
+      spriteID: f6fc7badaf425ea90800000000000000
+      internalID: -7285376162372006033
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mage_1
+      rect:
+        serializedVersion: 2
+        x: 357
+        y: 419
+        width: 68
+        height: 52
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: a1ca3343aab3d1310800000000000000
+      internalID: 1377322663251520538
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mage_2
+      rect:
+        serializedVersion: 2
+        x: 431
+        y: 403
+        width: 48
+        height: 55
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 2f7e050b5e3e6b120800000000000000
+      internalID: 2429379624658069490
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Mage_3
+      rect:
+        serializedVersion: 2
+        x: 462
+        y: 368
+        width: 27
+        height: 27
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 3ec5f8ff420d415d0800000000000000
+      internalID: -3092618186771702557
       vertices: []
       indices: 
       edges: []
@@ -148,7 +223,10 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Screenshot 2026-01-02 202151_0: 4743971200383838015
+      Mage_0: -7285376162372006033
+      Mage_1: 1377322663251520538
+      Mage_2: 2429379624658069490
+      Mage_3: -3092618186771702557
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   className: Thief
   weaponName: Dagger
-  classIcon: {fileID: -3768313404332104141, guid: f6d5cd1bbdeebdb40bbe1c329f6c4a59, type: 3}
+  classIcon: {fileID: 21300000, guid: d8c29144063771b44a2e7e49670a2590, type: 3}
   baseHP: 60
   baseArmor: 10
   minAttack: 10

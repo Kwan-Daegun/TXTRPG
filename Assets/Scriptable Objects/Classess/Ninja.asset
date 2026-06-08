@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   className: Ninja
   weaponName: Katana
-  classIcon: {fileID: 1039290088143946559, guid: de9f0a4001e947d46a3267cddbb08668, type: 3}
+  classIcon: {fileID: 21300000, guid: 1e91cce4761321140b56da15c0f0ded3, type: 3}
   baseHP: 60
   baseArmor: 10
   minAttack: 30

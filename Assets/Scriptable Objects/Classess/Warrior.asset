@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   className: Warrior
   weaponName: Axe
-  classIcon: {fileID: -182120602654203209, guid: 692e49695e4db4249ab209973d98d29b, type: 3}
+  classIcon: {fileID: 21300000, guid: 2cb2a61cdb0f1d74c9c470bb3c41dc8e, type: 3}
   baseHP: 100
   baseArmor: 20
   minAttack: 20

@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   className: Ranger
   weaponName: Bow
-  classIcon: {fileID: -2262028302997907133, guid: d584418b1d90d0b42864d81519b2b894, type: 3}
+  classIcon: {fileID: 21300000, guid: ea0aae1955e85c649833105c922f37cd, type: 3}
   baseHP: 80
   baseArmor: 15
   minAttack: 15

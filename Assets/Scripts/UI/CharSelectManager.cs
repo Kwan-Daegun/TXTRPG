@@ -265,30 +265,41 @@ public class CharSelectManager : MonoBehaviour
     }
 
     private void BuildPartyAndStart()
+{
+    GameManager.Instance.party.Clear();
+
+    var clientIds = new List<ulong>(_allPlayerSelections.Keys);
+    clientIds.Sort();
+
+    // Build payload while constructing the party
+    var rosterParts = new List<string>();
+
+    foreach (var clientId in clientIds)
     {
-        GameManager.Instance.party.Clear();
+        string classNames = _allPlayerSelections[clientId];
+        if (string.IsNullOrWhiteSpace(classNames)) continue;
 
-        var clientIds = new List<ulong>(_allPlayerSelections.Keys);
-        clientIds.Sort();
-
-        foreach (var clientId in clientIds)
+        foreach (string className in classNames.Split(','))
         {
-            string classNames = _allPlayerSelections[clientId];
-            if (string.IsNullOrWhiteSpace(classNames)) continue;
+            CharacterClass so = FindClassByName(className);
+            if (so == null) continue;
 
-            foreach (string className in classNames.Split(','))
-            {
-                CharacterClass so = FindClassByName(className);
-                if (so == null) continue;
-                var data = new PlayerRunTimeData();
-                data.Initialize(so, so.className, clientId);
-                GameManager.Instance.party.Add(data);
-            }
+            var data = new PlayerRunTimeData();
+            data.Initialize(so, so.className, clientId);
+            GameManager.Instance.party.Add(data);
+
+            // clientId,className,playerName
+            rosterParts.Add($"{clientId},{so.className},{so.className}");
         }
-
-        NetworkGameSync.Instance.ChangeGameStateServerRpc(GameState.EntranceHall);
     }
 
+    // Send full party roster to all clients BEFORE changing state
+    // so their party list is ready when DungeonScene loads
+    string rosterPayload = string.Join("|", rosterParts);
+    NetworkGameSync.Instance.SyncPartyRosterClientRpc(rosterPayload);
+
+    NetworkGameSync.Instance.ChangeGameStateServerRpc(GameState.EntranceHall);
+}
     private CharacterClass FindClassByName(string name)
     {
         foreach (var so in allClasses)

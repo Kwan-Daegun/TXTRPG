@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: 
   className: Mage
   weaponName: Book
-  classIcon: {fileID: 8602205992103896309, guid: 65b728af77ec99c4aa1d8aa20e7a0be5, type: 3}
+  classIcon: {fileID: 21300000, guid: 164ebaeac0532934da73769800bac28a, type: 3}
   baseHP: 75
   baseArmor: 15
   minAttack: 10

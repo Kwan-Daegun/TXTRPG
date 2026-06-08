@@ -1,10 +1,16 @@
 fileFormatVersion: 2
-guid: b6785679c35f52e4aaeca3463a084766
+guid: 5359111d8efea4c4a950da5bad59d8ba
 TextureImporter:
   internalIDToNameTable:
   - first:
-      213: 4743971200383838015
-    second: Screenshot 2026-01-02 202151_0
+      213: 3461459112936250053
+    second: Druid_0
+  - first:
+      213: -8052446643519941309
+    second: Druid_1
+  - first:
+      213: -6687900893908356560
+    second: Druid_2
   externalObjects: {}
   serializedVersion: 13
   mipmaps:
@@ -37,7 +43,7 @@ TextureImporter:
   maxTextureSize: 2048
   textureSettings:
     serializedVersion: 2
-    filterMode: 1
+    filterMode: 0
     aniso: 1
     mipBias: 0
     wrapU: 1
@@ -75,7 +81,7 @@ TextureImporter:
     maxTextureSize: 2048
     resizeAlgorithm: 0
     textureFormat: -1
-    textureCompression: 1
+    textureCompression: 0
     compressionQuality: 50
     crunchedCompression: 0
     allowsAlphaSplitting: 0
@@ -113,13 +119,13 @@ TextureImporter:
     serializedVersion: 2
     sprites:
     - serializedVersion: 2
-      name: Screenshot 2026-01-02 202151_0
+      name: Druid_0
       rect:
         serializedVersion: 2
-        x: 0
-        y: 0
-        width: 1919
-        height: 1199
+        x: 64
+        y: 26
+        width: 389
+        height: 445
       alignment: 0
       pivot: {x: 0, y: 0}
       border: {x: 0, y: 0, z: 0, w: 0}
@@ -128,8 +134,52 @@ TextureImporter:
       physicsShape: []
       tessellationDetail: -1
       bones: []
-      spriteID: f37ef8f0ca8f5d140800000000000000
-      internalID: 4743971200383838015
+      spriteID: 5ca9a1f39b2990030800000000000000
+      internalID: 3461459112936250053
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Druid_1
+      rect:
+        serializedVersion: 2
+        x: 397
+        y: 361
+        width: 77
+        height: 75
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 34515300176ff3090800000000000000
+      internalID: -8052446643519941309
+      vertices: []
+      indices: 
+      edges: []
+      weights: []
+    - serializedVersion: 2
+      name: Druid_2
+      rect:
+        serializedVersion: 2
+        x: 445
+        y: 290
+        width: 40
+        height: 37
+      alignment: 0
+      pivot: {x: 0, y: 0}
+      border: {x: 0, y: 0, z: 0, w: 0}
+      customData: 
+      outline: []
+      physicsShape: []
+      tessellationDetail: -1
+      bones: []
+      spriteID: 032339d229dcf23a0800000000000000
+      internalID: -6687900893908356560
       vertices: []
       indices: 
       edges: []
@@ -148,7 +198,9 @@ TextureImporter:
     spriteCustomMetadata:
       entries: []
     nameFileIdTable:
-      Screenshot 2026-01-02 202151_0: 4743971200383838015
+      Druid_0: 3461459112936250053
+      Druid_1: -8052446643519941309
+      Druid_2: -6687900893908356560
   mipmapLimitGroupName: 
   pSDRemoveMatte: 0
   userData: 

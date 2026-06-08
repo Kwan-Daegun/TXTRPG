@@ -24,6 +24,10 @@ public class CombatManager : MonoBehaviour
         }
         Instance = this;
     }
+     private void Start()
+    {
+        OnCombatEnd += () => RoomManager.Instance?.OnCombatEnded();
+    }
 
     public void StartCombat(List<EnemyClass> enemySOs)
     {
@@ -44,7 +48,7 @@ public class CombatManager : MonoBehaviour
 
     public bool IsCombatOver() => currentEnemyIndex >= enemies.Count;
 
-    // ===== LOG (no sync here — sync happens at end of each action) =====
+    // ===== LOG — also syncs message to clients =====
     private void LogResult(CombatResult result)
     {
         combatLog.Add(result);
@@ -52,62 +56,84 @@ public class CombatManager : MonoBehaviour
         DungeonUIManager.Instance?.LogCombat(result.message);
         DungeonUIManager.Instance?.RefreshCombatPanel();
         DungeonUIManager.Instance?.RefreshHUD();
+
+        // Sync combat log message to clients
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsServer)
+            NetworkGameSync.Instance?.SyncCombatLogClientRpc(result.message);
     }
 
-    // ===== SYNC HELPER (called once at end of each full action) =====
+    // ===== SYNC HELPER =====
     private void SyncCombatToClients()
     {
-        if (NetworkManager.Singleton == null || !NetworkManager.Singleton.IsServer)
+        if (NetworkManager.Singleton == null ||
+            !NetworkManager.Singleton.IsServer)
             return;
 
+        // Enemy payload: name:currentHP:maxHP:currentArmor:isDead
         var enemyParts = new List<string>();
         foreach (var e in enemies)
             enemyParts.Add(
-                $"{e.enemyName}:{e.currentHP}:{e.template.baseHP}:{e.currentArmor}");
-        string enemyPayload = string.Join("|", enemyParts);
+                $"{e.enemyName}:{e.currentHP}:{e.template.baseHP}" +
+                $":{e.currentArmor}:{(e.isDead ? 1 : 0)}");
 
+        // Party payload: name:hp:armor:isDead
         var partyParts = new List<string>();
         foreach (var m in GameManager.Instance.party)
             partyParts.Add(
-                $"{m.playerName}:{m.currentHP}:{m.currentArmor}:{(m.isDead ? 1 : 0)}");
-        string partyPayload = string.Join("|", partyParts);
+                $"{m.playerName}:{m.currentHP}:{m.currentArmor}" +
+                $":{(m.isDead ? 1 : 0)}");
 
         NetworkGameSync.Instance.SyncCombatStateClientRpc(
-            enemyPayload, partyPayload, "");
+            string.Join("|", enemyParts),
+            string.Join("|", partyParts),
+            "");
     }
 
     // ===== ENEMY DEATH =====
     private void HandleEnemyDeath(EnemyRuntimeData enemy)
+{
+    int gold = Random.Range(
+        enemy.template.goldDropMin,
+        enemy.template.goldDropMax + 1);
+    GameManager.Instance.AddGold(gold);
+
+    if (Random.Range(0, 100) < enemy.template.PotionDropChance)
+        GameManager.Instance.AddPotion();
+
+    DungeonUIManager.Instance.RefreshHUD();
+
+    if (CurrentEnemy == enemy)
     {
-        int gold = Random.Range(
-            enemy.template.goldDropMin,
-            enemy.template.goldDropMax + 1);
-        GameManager.Instance.AddGold(gold);
-
-        if (Random.Range(0, 100) < enemy.template.PotionDropChance)
-            GameManager.Instance.AddPotion();
-
-        DungeonUIManager.Instance.RefreshHUD();
-
-        if (CurrentEnemy == enemy)
-        {
+        currentEnemyIndex++;
+        while (currentEnemyIndex < enemies.Count &&
+               enemies[currentEnemyIndex].isDead)
             currentEnemyIndex++;
-            while (currentEnemyIndex < enemies.Count &&
-                   enemies[currentEnemyIndex].isDead)
-                currentEnemyIndex++;
 
-            if (currentEnemyIndex >= enemies.Count)
-            {
-                OnCombatEnd?.Invoke();
-                DungeonUIManager.Instance.HideCombatPanel();
-                RoomManager.Instance.OnCombatEnded();
-                return;
-            }
+        if (currentEnemyIndex >= enemies.Count)
+        {
+            // All enemies dead — end combat on HOST too
+            DungeonUIManager.Instance.HideCombatPanel(); // ← host hides panel
+            RoomManager.Instance.OnCombatEnded();        // ← host triggers room logic
 
-            DungeonUIManager.Instance.LogCombat("Next enemy appears!");
-            DungeonUIManager.Instance.RefreshCombatPanel();
+            if (NetworkManager.Singleton != null &&
+                NetworkManager.Singleton.IsServer)
+                NetworkGameSync.Instance?.SyncCombatEndClientRpc(); // ← clients hide panel
+
+            OnCombatEnd?.Invoke();
+            return;
         }
+
+        DungeonUIManager.Instance.LogCombat("Next enemy appears!");
+
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsServer)
+            NetworkGameSync.Instance?.SyncCombatLogClientRpc(
+                "Next enemy appears!");
+
+        DungeonUIManager.Instance.RefreshCombatPanel();
     }
+}
 
     // ===== PLAYER ATTACK ALL =====
     public void PlayerAttackAll()
@@ -117,7 +143,8 @@ public class CombatManager : MonoBehaviour
             ? NetworkManager.Singleton.LocalClientId
             : 0;
 
-        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsServer)
             RunAttackServer(requesterId);
         else
             RequestAttackServerRpc(requesterId);
@@ -172,7 +199,8 @@ public class CombatManager : MonoBehaviour
         {
             result.eventType = CombatEventType.Dodge;
             result.damage = 0;
-            result.message = $"{enemy.enemyName} dodged {attacker.playerName}'s attack!";
+            result.message =
+                $"{enemy.enemyName} dodged {attacker.playerName}'s attack!";
         }
         else if (enemy.IsBlock())
         {
@@ -180,7 +208,8 @@ public class CombatManager : MonoBehaviour
             enemy.TakeDamage(blocked);
             result.eventType = CombatEventType.Block;
             result.damage = blocked;
-            result.message = $"{enemy.enemyName} blocked! Only {blocked} damage taken.";
+            result.message =
+                $"{enemy.enemyName} blocked! Only {blocked} damage taken.";
         }
         else
         {
@@ -189,7 +218,8 @@ public class CombatManager : MonoBehaviour
                 enemy.TakeDamage(rawDamage);
                 result.eventType = CombatEventType.ArmorAbsorb;
                 result.damage = 0;
-                result.message = $"{enemy.enemyName}'s armor absorbed the attack!";
+                result.message =
+                    $"{enemy.enemyName}'s armor absorbed the attack!";
             }
             else
             {
@@ -208,7 +238,8 @@ public class CombatManager : MonoBehaviour
                         attackerName = enemy.enemyName,
                         defenderName = attacker.playerName,
                         damage = rawDamage,
-                        message = $"{enemy.enemyName} COUNTERS for {rawDamage} damage!"
+                        message =
+                            $"{enemy.enemyName} COUNTERS for {rawDamage} damage!"
                     });
                 }
             }
@@ -246,25 +277,35 @@ public class CombatManager : MonoBehaviour
             if (enemy.isFrozen)
             {
                 enemy.isFrozen = false;
-                DungeonUIManager.Instance.LogCombat(
-                    $"{enemy.enemyName} is frozen and cannot act!");
+                string frozenMsg =
+                    $"{enemy.enemyName} is frozen and cannot act!";
+                DungeonUIManager.Instance.LogCombat(frozenMsg);
+                if (NetworkManager.Singleton != null &&
+                    NetworkManager.Singleton.IsServer)
+                    NetworkGameSync.Instance?.SyncCombatLogClientRpc(frozenMsg);
                 continue;
             }
 
             if (enemy.isVined)
             {
                 enemy.isVined = false;
-                DungeonUIManager.Instance.LogCombat(
-                    $"{enemy.enemyName} is entangled and cannot act!");
+                string vinedMsg =
+                    $"{enemy.enemyName} is entangled and cannot act!";
+                DungeonUIManager.Instance.LogCombat(vinedMsg);
+                if (NetworkManager.Singleton != null &&
+                    NetworkManager.Singleton.IsServer)
+                    NetworkGameSync.Instance?.SyncCombatLogClientRpc(vinedMsg);
                 continue;
             }
 
-            var livingParty = GameManager.Instance.party.FindAll(p => !p.isDead);
+            var livingParty =
+                GameManager.Instance.party.FindAll(p => !p.isDead);
             if (livingParty.Count == 0) break;
 
             var target = livingParty[Random.Range(0, livingParty.Count)];
             bool isSpecial = enemy.IsSpecial();
-            int rawDamage = isSpecial ? enemy.RollSpecialAttack() : enemy.RollAttack();
+            int rawDamage =
+                isSpecial ? enemy.RollSpecialAttack() : enemy.RollAttack();
             if (isSpecial && enemy.template.minSpecialAtk == 0)
                 rawDamage = enemy.RollAttack() * 2;
 
@@ -279,8 +320,9 @@ public class CombatManager : MonoBehaviour
                 target.TakeDamage(rawDamage);
                 result.eventType = CombatEventType.Special;
                 result.damage = rawDamage;
-                result.message = $"{enemy.enemyName} uses SPECIAL ATTACK on " +
-                                 $"{target.playerName} for {rawDamage} damage!";
+                result.message =
+                    $"{enemy.enemyName} uses SPECIAL ATTACK on " +
+                    $"{target.playerName} for {rawDamage} damage!";
             }
             else if (target.IsDodge())
             {
@@ -303,8 +345,9 @@ public class CombatManager : MonoBehaviour
                 target.TakeDamage(rawDamage);
                 result.eventType = CombatEventType.Hit;
                 result.damage = rawDamage;
-                result.message = $"{enemy.enemyName} hits {target.playerName} " +
-                                 $"for {rawDamage} damage!";
+                result.message =
+                    $"{enemy.enemyName} hits {target.playerName} " +
+                    $"for {rawDamage} damage!";
 
                 if (target.IsCounter())
                 {
@@ -338,13 +381,17 @@ public class CombatManager : MonoBehaviour
     // ===== SKILL =====
     public void PlayerSkill(PlayerRunTimeData attacker)
     {
-        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
-            RunSkill(attacker.ownerClientId, attacker.classTemplate.className);
-        else if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsServer)
+            RunSkill(attacker.ownerClientId,
+                attacker.classTemplate.className);
+        else if (NetworkManager.Singleton != null &&
+                 NetworkManager.Singleton.IsClient)
             RequestSkillServerRpc(attacker.ownerClientId,
                 attacker.classTemplate.className);
         else
-            RunSkill(attacker.ownerClientId, attacker.classTemplate.className);
+            RunSkill(attacker.ownerClientId,
+                attacker.classTemplate.className);
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -364,9 +411,13 @@ public class CombatManager : MonoBehaviour
 
         if (!attacker.CanUseSkill())
         {
-            DungeonUIManager.Instance.LogCombat(
+            string cdMsg =
                 $"{attacker.playerName}'s skill is on cooldown! " +
-                $"({attacker.skillCooldownLeft} turns left)");
+                $"({attacker.skillCooldownLeft} turns left)";
+            DungeonUIManager.Instance.LogCombat(cdMsg);
+            if (NetworkManager.Singleton != null &&
+                NetworkManager.Singleton.IsServer)
+                NetworkGameSync.Instance?.SyncCombatLogClientRpc(cdMsg);
             return;
         }
 
@@ -389,7 +440,8 @@ public class CombatManager : MonoBehaviour
                         if (e.isDead) HandleEnemyDeath(e);
                     }
                 }
-                attacker.skillCooldownLeft = attacker.classTemplate.skillCooldown;
+                attacker.skillCooldownLeft =
+                    attacker.classTemplate.skillCooldown;
                 break;
 
             case "Mage":
@@ -400,7 +452,8 @@ public class CombatManager : MonoBehaviour
                       $"{enemy.enemyName} is frozen!\n" +
                       $"{enemy.enemyName} takes {frostDmg} damage!";
                 if (enemy.isDead) HandleEnemyDeath(enemy);
-                attacker.skillCooldownLeft = attacker.classTemplate.skillCooldown;
+                attacker.skillCooldownLeft =
+                    attacker.classTemplate.skillCooldown;
                 break;
 
             case "Ranger":
@@ -415,7 +468,8 @@ public class CombatManager : MonoBehaviour
                     }
                 }
                 if (enemy.isDead) HandleEnemyDeath(enemy);
-                attacker.skillCooldownLeft = attacker.classTemplate.skillCooldown;
+                attacker.skillCooldownLeft =
+                    attacker.classTemplate.skillCooldown;
                 break;
 
             case "Ninja":
@@ -426,14 +480,17 @@ public class CombatManager : MonoBehaviour
                       $"Next attack will be dodged!\n" +
                       $"{enemy.enemyName} takes {ninjaSkillDmg} damage!";
                 if (enemy.isDead) HandleEnemyDeath(enemy);
-                attacker.skillCooldownLeft = attacker.classTemplate.skillCooldown;
+                attacker.skillCooldownLeft =
+                    attacker.classTemplate.skillCooldown;
                 break;
 
             case "Thief":
                 int stolenGold = Random.Range(10, 30);
                 GameManager.Instance.AddGold(stolenGold);
-                log = $"{attacker.playerName} uses STEAL!\nStole {stolenGold} gold!";
-                attacker.skillCooldownLeft = attacker.classTemplate.skillCooldown;
+                log = $"{attacker.playerName} uses STEAL!\n" +
+                      $"Stole {stolenGold} gold!";
+                attacker.skillCooldownLeft =
+                    attacker.classTemplate.skillCooldown;
                 break;
 
             case "Druid":
@@ -449,11 +506,16 @@ public class CombatManager : MonoBehaviour
                         log += $"\n{member.playerName} healed {healAmount} HP!";
                     }
                 }
-                attacker.skillCooldownLeft = attacker.classTemplate.skillCooldown;
+                attacker.skillCooldownLeft =
+                    attacker.classTemplate.skillCooldown;
                 break;
         }
 
         DungeonUIManager.Instance.LogCombat(log);
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsServer)
+            NetworkGameSync.Instance?.SyncCombatLogClientRpc(log);
+
         DungeonUIManager.Instance.RefreshCombatPanel();
         DungeonUIManager.Instance.RefreshHUD();
 
@@ -465,13 +527,17 @@ public class CombatManager : MonoBehaviour
     // ===== ULTIMATE =====
     public void PlayerUltimate(PlayerRunTimeData attacker)
     {
-        if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsServer)
-            RunUltimate(attacker.ownerClientId, attacker.classTemplate.className);
-        else if (NetworkManager.Singleton != null && NetworkManager.Singleton.IsClient)
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsServer)
+            RunUltimate(attacker.ownerClientId,
+                attacker.classTemplate.className);
+        else if (NetworkManager.Singleton != null &&
+                 NetworkManager.Singleton.IsClient)
             RequestUltimateServerRpc(attacker.ownerClientId,
                 attacker.classTemplate.className);
         else
-            RunUltimate(attacker.ownerClientId, attacker.classTemplate.className);
+            RunUltimate(attacker.ownerClientId,
+                attacker.classTemplate.className);
     }
 
     [ServerRpc(RequireOwnership = false)]
@@ -491,9 +557,13 @@ public class CombatManager : MonoBehaviour
 
         if (!attacker.CanUseUltimate())
         {
-            DungeonUIManager.Instance.LogCombat(
+            string cdMsg =
                 $"{attacker.playerName}'s ultimate is on cooldown! " +
-                $"({attacker.ultimateCooldownLeft} turns left)");
+                $"({attacker.ultimateCooldownLeft} turns left)";
+            DungeonUIManager.Instance.LogCombat(cdMsg);
+            if (NetworkManager.Singleton != null &&
+                NetworkManager.Singleton.IsServer)
+                NetworkGameSync.Instance?.SyncCombatLogClientRpc(cdMsg);
             return;
         }
 
@@ -510,7 +580,8 @@ public class CombatManager : MonoBehaviour
                 log = $"{attacker.playerName} uses BERSERKER RAGE!\n" +
                       $"{enemy.enemyName} takes {berserkDmg} damage!";
                 if (enemy.isDead) HandleEnemyDeath(enemy);
-                attacker.ultimateCooldownLeft = attacker.classTemplate.ultimateCooldown;
+                attacker.ultimateCooldownLeft =
+                    attacker.classTemplate.ultimateCooldown;
                 break;
 
             case "Mage":
@@ -525,7 +596,8 @@ public class CombatManager : MonoBehaviour
                         if (e.isDead) HandleEnemyDeath(e);
                     }
                 }
-                attacker.ultimateCooldownLeft = attacker.classTemplate.ultimateCooldown;
+                attacker.ultimateCooldownLeft =
+                    attacker.classTemplate.ultimateCooldown;
                 break;
 
             case "Ranger":
@@ -534,16 +606,19 @@ public class CombatManager : MonoBehaviour
                 log = $"{attacker.playerName} uses RAIN OF ARROWS!\n" +
                       $"{enemy.enemyName} takes {rainDmg} damage!";
                 if (enemy.isDead) HandleEnemyDeath(enemy);
-                attacker.ultimateCooldownLeft = attacker.classTemplate.ultimateCooldown;
+                attacker.ultimateCooldownLeft =
+                    attacker.classTemplate.ultimateCooldown;
                 break;
 
             case "Ninja":
-                float hpPercent = (float)enemy.currentHP / enemy.template.baseHP;
+                float hpPercent =
+                    (float)enemy.currentHP / enemy.template.baseHP;
                 if (hpPercent < 0.3f)
                 {
                     enemy.currentHP = 0;
                     enemy.isDead = true;
-                    log = $"{attacker.playerName} uses ASSASSINATE!\nINSTANT KILL!";
+                    log = $"{attacker.playerName} uses ASSASSINATE!\n" +
+                          $"INSTANT KILL!";
                     HandleEnemyDeath(enemy);
                 }
                 else
@@ -554,7 +629,8 @@ public class CombatManager : MonoBehaviour
                           $"Enemy HP too high! Deals {ninjaUltDmg} instead.";
                     if (enemy.isDead) HandleEnemyDeath(enemy);
                 }
-                attacker.ultimateCooldownLeft = attacker.classTemplate.ultimateCooldown;
+                attacker.ultimateCooldownLeft =
+                    attacker.classTemplate.ultimateCooldown;
                 break;
 
             case "Thief":
@@ -565,7 +641,8 @@ public class CombatManager : MonoBehaviour
                       $"Will dodge next attack!\n" +
                       $"{enemy.enemyName} takes {smokeDmg} damage!";
                 if (enemy.isDead) HandleEnemyDeath(enemy);
-                attacker.ultimateCooldownLeft = attacker.classTemplate.ultimateCooldown;
+                attacker.ultimateCooldownLeft =
+                    attacker.classTemplate.ultimateCooldown;
                 break;
 
             case "Druid":
@@ -576,11 +653,16 @@ public class CombatManager : MonoBehaviour
                       $"{enemy.enemyName} is vined! Can't attack!\n" +
                       $"Takes {vineDmg} damage!";
                 if (enemy.isDead) HandleEnemyDeath(enemy);
-                attacker.ultimateCooldownLeft = attacker.classTemplate.ultimateCooldown;
+                attacker.ultimateCooldownLeft =
+                    attacker.classTemplate.ultimateCooldown;
                 break;
         }
 
         DungeonUIManager.Instance.LogCombat(log);
+        if (NetworkManager.Singleton != null &&
+            NetworkManager.Singleton.IsServer)
+            NetworkGameSync.Instance?.SyncCombatLogClientRpc(log);
+
         DungeonUIManager.Instance.RefreshCombatPanel();
         DungeonUIManager.Instance.RefreshHUD();
 
